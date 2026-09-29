@@ -27,6 +27,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const res = ctx.getResponse<Response>();
 
     if (exception instanceof AppException) {
+      // 429 / 503 ต้องบอก client ว่ารออีกกี่วินาที (api-conventions.md ข้อ 4)
+      if (exception.retryAfterSec !== undefined) {
+        res.set('Retry-After', String(exception.retryAfterSec));
+      }
       return res.status(exception.getStatus()).json({
         success: false,
         error: {

@@ -1,18 +1,18 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { CreateReportDto } from './dto/create-report.dto';
-import { RequireAuthGuard } from '../common/guards/require-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { GatewayUser } from '../common/middleware/gateway-auth.middleware';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CoreHubIdentity } from '../auth/core-hub-identity';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { Permission } from '../auth/permissions';
 
-// resource: /api/v1/reports — ต้อง login (ใครก็ตามที่เป็นผู้ใช้ระบบ รายงานได้ ไม่ต้องเป็น Admin)
-@UseGuards(RequireAuthGuard)
-@Controller('reports')
+@Controller('v1/reports')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
+  @RequirePermissions(Permission.REPORT_CREATE)
   @Post()
-  create(@Body() dto: CreateReportDto, @CurrentUser() user: GatewayUser) {
+  create(@Body() dto: CreateReportDto, @CurrentUser() user: CoreHubIdentity) {
     return this.reportsService.create(dto, user);
   }
 }

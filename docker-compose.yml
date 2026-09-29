@@ -1,0 +1,68 @@
+# CSMJU2030 tech-stack.md ข้อ 1.1 + ข้อ 2 — ต้องมี Dockerfile และ docker-compose.yml
+# ยกทั้งกองขึ้นด้วย:  docker compose up --build
+#
+# หมายเหตุ port ของฐานข้อมูล: map 5434 -> 5432 เพื่อไม่ชนกับ PostgreSQL ที่ติดตั้งตรงบนเครื่อง
+# (ถ้าจะใช้ตัวใน Docker ให้แก้ DATABASE_URL ใน backend/.env เป็น port 5434)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: campusshare-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # data-dictionary.md ข้อ 9.1: ชื่อ database = <subsystem>_db
+      POSTGRES_DB: csmju_campus_share_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - campusshare-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d csmju_campus_share_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: campusshare-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3002"
+      # ในเครือข่ายของ compose ใช้ชื่อ service "db" และ port ภายใน 5432
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/csmju_campus_share_db?schema=public
+      SUBSYSTEM_NAME: csmju-campus-share
+      PUBLIC_ORIGIN: http://localhost:3003
+      COREHUB_WEB_URL: ${COREHUB_WEB_URL:-http://host.docker.internal:3000}
+      COREHUB_JWKS_URL: ${COREHUB_JWKS_URL:-http://host.docker.internal:3000/api/v1/.well-known/jwks.json}
+      COREHUB_ISSUER: core-hub
+      COREHUB_AUDIENCE: csmju2030
+    ports:
+      - "3002:3002"
+    depends_on:
+      db:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: campusshare-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      # next.config.ts proxy /api, /auth, /health ไปที่นี่ (ต้องเป็นชื่อ service ไม่ใช่ localhost)
+      BACKEND_ORIGIN: http://backend:3002
+    ports:
+      - "3003:3003"
+    depends_on:
+      - backend
+
+volumes:
+  campusshare-db-data:

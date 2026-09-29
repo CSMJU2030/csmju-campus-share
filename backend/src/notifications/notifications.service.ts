@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
+import { notFound } from '../common/exceptions/app.exception';
 
 interface CreateNotificationInput {
   recipientCoreUserId: string;
@@ -48,12 +49,13 @@ export class NotificationsService {
     });
   }
 
+  /** ไม่เจอ หรือไม่ใช่ของผู้เรียก -> 404 (เดิม no-op เงียบๆ ทำให้บักซ่อนตัว) */
   async markRead(id: string, coreUserId: string) {
-    // ไม่ throw ถ้าไม่ใช่เจ้าของ/ไม่เจอ — แค่ no-op เงียบๆ พอ ไม่ใช่ endpoint ที่ critical
-    await this.prisma.notification.updateMany({
+    const updated = await this.prisma.notification.updateMany({
       where: { id, recipientCoreUserId: coreUserId },
       data: { isRead: true },
     });
+    if (updated.count === 0) throw notFound('ไม่พบการแจ้งเตือนนี้');
   }
 
   /**

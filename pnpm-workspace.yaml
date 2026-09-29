@@ -1,3 +1,15 @@
 packages:
   - 'frontend'
   - 'backend'
+
+# pnpm บล็อก build script (postinstall) ของ dependency โดยดีฟอลต์
+# Prisma "ต้อง" รัน postinstall เพื่อดาวน์โหลด query engine ไม่งั้น prisma CLI ใช้ไม่ได้เลย
+# (ERR_PNPM_IGNORED_BUILDS)
+#
+# อนุญาตเฉพาะสองตัวนี้เท่านั้น — @parcel/watcher และ unrs-resolver เป็น native speedup
+# ที่ไม่มีก็ทำงานได้ปกติ จึงไม่เปิดช่องให้รัน script โดยไม่จำเป็น
+allowBuilds:
+  '@parcel/watcher': true
+  '@prisma/engines': true
+  prisma: true
+  unrs-resolver: true

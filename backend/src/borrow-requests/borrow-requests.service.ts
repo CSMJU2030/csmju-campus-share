@@ -3,11 +3,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBorrowRequestDto } from './dto/create-borrow-request.dto';
 import { UpdateBorrowRequestStatusDto } from './dto/update-borrow-request-status.dto';
-import { GatewayUser } from '../common/middleware/gateway-auth.middleware';
 import { conflict, forbidden, notFound, validationError } from '../common/exceptions/app.exception';
+import { CoreHubIdentity } from '../auth/core-hub-identity';
 
-// นโยบาย fail-safe (ดูหลักการที่ตกลงกันไว้ — ระบบต้องอยู่รอดได้แม้ไม่มี Admin เฝ้า)
-const PENDING_EXPIRE_DAYS = 3; // เจ้าของไม่ตอบภายในกี่วัน -> auto-expire
+// นโยบาย fail-safe — ระบบต้องอยู่รอดได้แม้ไม่มี Admin เฝ้า
+const PENDING_EXPIRE_DAYS = 3;
+const CURRENT_DEPARTMENT = 'computer-science';
+
+/** แถวที่ได้จาก UPDATE ... RETURNING ของงานตั้งเวลา */
+interface AffectedRequestRow {
+  id: string;
+  listing_id: string;
+  requester_core_user_id: string;
+  title: string;
+}
 
 @Injectable()
 export class BorrowRequestsService {
@@ -16,38 +25,42 @@ export class BorrowRequestsService {
     private readonly notifications: NotificationsService,
   ) {}
 
-  async create(dto: CreateBorrowRequestDto, user: GatewayUser) {
-    const listing = await this.prisma.listing.findUnique({
-      where: { id: dto.listing_id },
-    });
-    if (!listing) throw notFound('ไม่พบรายการของนี้');
+  async create(dto: CreateBorrowRequestDto, user: CoreHubIdentity) {
+    const listing = await this.prisma.listing.findUnique({ where: { id: dto.listingId } });
+    if (!listing || listing.department !== CURRENT_DEPARTMENT) throw notFound('ไม่พบรายการของนี้');
 
-    if (listing.ownerCoreUserId === user.coreUserId) {
+    const requesterCoreUserId = user.coreUserId;
+    if (listing.ownerCoreUserId === requesterCoreUserId) {
       throw forbidden('ไม่สามารถขอยืมของของตัวเองได้');
     }
-    if (listing.status !== 'available') {
-      // ของถูกยืมไปแล้ว/ไม่พร้อมให้ยืม ตรงกับเคสที่ออกแบบ error mapping ไว้ตั้งแต่แรก
-      throw conflict('ของชิ้นนี้ไม่ว่างให้ยืมในตอนนี้', { listing_status: listing.status });
+    if (listing.status !== 'AVAILABLE') {
+      throw conflict('ของชิ้นนี้ไม่ว่างให้ยืมในตอนนี้', { listingStatus: listing.status });
     }
 
-    const [request] = await this.prisma.$transaction([
-      this.prisma.borrowRequest.create({
+    // จอง listing ก่อนสร้างคำขอ ภายใน transaction เดียว — สองคนกดพร้อมกันจะมีคนเดียวที่ผ่าน
+    const request = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.listing.updateMany({
+        where: { id: listing.id, status: 'AVAILABLE' },
+        data: { status: 'PENDING', lastActivityAt: new Date() },
+      });
+      if (claimed.count === 0) {
+        throw conflict('ของชิ้นนี้เพิ่งถูกคนอื่นขอไปก่อนหน้าคุณ', { listingStatus: 'PENDING' });
+      }
+      return tx.borrowRequest.create({
         data: {
           listingId: listing.id,
-          requesterCoreUserId: user.coreUserId,
+          requesterCoreUserId,
           message: dto.message,
         },
-      }),
-      this.prisma.listing.update({
-        where: { id: listing.id },
-        data: { status: 'pending', lastActivityAt: new Date() },
-      }),
-    ]);
+      });
+    });
 
     await this.notifications.create({
       recipientCoreUserId: listing.ownerCoreUserId,
-      type: 'new_request',
-      title: `มีคนขอยืม "${listing.title}"`,
+      type: 'NEW_REQUEST',
+      title: listing.listingType === 'GIVEAWAY'
+        ? `มีคนขอรับ "${listing.title}"`
+        : `มีคนขอยืม "${listing.title}"`,
       body: dto.message,
       refListingId: listing.id,
       refRequestId: request.id,
@@ -56,84 +69,97 @@ export class BorrowRequestsService {
     return { data: request };
   }
 
-  async findMine(user: GatewayUser) {
-    // คำขอที่ "ฉันเป็นคนขอ" + คำขอที่ "ฉันเป็นเจ้าของของ" รวมกัน ให้ frontend แยก tab เอง
+  async findMine(user: CoreHubIdentity) {
+    const coreUserId = user.coreUserId;
+
     const [asRequester, asOwner] = await Promise.all([
       this.prisma.borrowRequest.findMany({
-        where: { requesterCoreUserId: user.coreUserId },
+        where: { requesterCoreUserId: coreUserId },
         include: { listing: true },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.borrowRequest.findMany({
-        where: { listing: { ownerCoreUserId: user.coreUserId } },
+        where: { listing: { ownerCoreUserId: coreUserId } },
         include: { listing: true },
         orderBy: { createdAt: 'desc' },
       }),
     ]);
-    return { data: { as_requester: asRequester, as_owner: asOwner } };
+    // api-conventions.md ข้อ 6: field ใน JSON เป็น camelCase
+    return { data: { asRequester, asOwner } };
   }
 
-  async updateStatus(id: string, dto: UpdateBorrowRequestStatusDto, user: GatewayUser) {
+  async updateStatus(id: string, dto: UpdateBorrowRequestStatusDto, user: CoreHubIdentity) {
     const request = await this.prisma.borrowRequest.findUnique({
       where: { id },
       include: { listing: true },
     });
     if (!request) throw notFound('ไม่พบคำขอยืมนี้');
 
-    if (dto.status === 'approved' || dto.status === 'rejected') {
+    if (dto.status === 'APPROVED' || dto.status === 'REJECTED') {
       return this.ownerRespond(request, dto, user);
     }
-    if (dto.status === 'returned') {
-      return this.markReturned(request, user);
-    }
-    // กัน DTO หลุดมาถึงนี่ (ปกติ class-validator IsIn กันไว้แล้วชั้นหนึ่ง)
-    throw validationError('สถานะไม่ถูกต้อง',  ['status']);
+    return this.markReturned(request, user);
   }
 
   private async ownerRespond(
-    request: Awaited<ReturnType<PrismaService['borrowRequest']['findUniqueOrThrow']>> & {
-      listing: { ownerCoreUserId: string; id: string; title: string };
-    },
+    request: { id: string; status: string; requesterCoreUserId: string; listing: { id: string; title: string; ownerCoreUserId: string; listingType: string } },
     dto: UpdateBorrowRequestStatusDto,
-    user: GatewayUser,
+    user: CoreHubIdentity,
   ) {
     if (request.listing.ownerCoreUserId !== user.coreUserId) {
       throw forbidden('เฉพาะเจ้าของของเท่านั้นที่อนุมัติ/ปฏิเสธคำขอได้');
     }
-    if (request.status !== 'pending') {
-      throw conflict('คำขอนี้ถูกตอบกลับไปแล้ว หรือหมดอายุแล้ว', {
-        current_status: request.status,
-      });
+    if (request.status !== 'PENDING') {
+      throw conflict('คำขอนี้ถูกตอบกลับไปแล้ว หรือหมดอายุแล้ว', { currentStatus: request.status });
     }
 
-    const isApproved = dto.status === 'approved';
+    const isApproved = dto.status === 'APPROVED';
+    const isGiveaway = request.listing.listingType === 'GIVEAWAY';
 
-    const [updatedRequest] = await this.prisma.$transaction([
-      this.prisma.borrowRequest.update({
-        where: { id: request.id },
+    if (isApproved && isGiveaway && dto.dueDate) {
+      throw validationError('รายการให้ต่อไม่มีกำหนดคืน', [
+        'dueDate must not be set when approving a GIVEAWAY listing',
+      ]);
+    }
+    if (isApproved && !isGiveaway && !dto.dueDate) {
+      throw validationError('ต้องระบุวันกำหนดคืนตอนอนุมัติ', [
+        'dueDate is required when approving a BORROW listing',
+      ]);
+    }
+
+    // GIVEAWAY ที่อนุมัติ = ส่งมอบแล้ว -> GIVEN_AWAY เป็นสถานะสิ้นสุด ไม่กลับมา AVAILABLE อีก
+    const nextListingStatus = !isApproved ? 'AVAILABLE' : isGiveaway ? 'GIVEN_AWAY' : 'BORROWED';
+
+    const updatedRequest = await this.prisma.$transaction(async (tx) => {
+      // เงื่อนไข status: 'PENDING' อยู่ใน WHERE — สองคนกดอนุมัติพร้อมกันจะผ่านคนเดียว
+      const changed = await tx.borrowRequest.updateMany({
+        where: { id: request.id, status: 'PENDING' },
         data: {
           status: dto.status,
-          responseMessage: dto.response_message,
+          responseMessage: dto.responseMessage,
           respondedAt: new Date(),
-          dueDate: isApproved && dto.due_date ? new Date(dto.due_date) : undefined,
+          dueDate: isApproved && dto.dueDate ? new Date(dto.dueDate) : null,
         },
-      }),
-      this.prisma.listing.update({
-        where: { id: request.listing.id },
-        data: {
-          status: isApproved ? 'borrowed' : 'available',
-          lastActivityAt: new Date(),
-        },
-      }),
-    ]);
+      });
+      if (changed.count === 0) {
+        throw conflict('คำขอนี้เพิ่งถูกตอบกลับไปแล้ว', { currentStatus: request.status });
+      }
+
+      await tx.listing.updateMany({
+        where: { id: request.listing.id, status: 'PENDING' },
+        data: { status: nextListingStatus, lastActivityAt: new Date() },
+      });
+
+      return tx.borrowRequest.findUniqueOrThrow({ where: { id: request.id } });
+    });
 
     await this.notifications.create({
       recipientCoreUserId: request.requesterCoreUserId,
-      type: isApproved ? 'request_approved' : 'request_rejected',
+      type: isApproved ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
       title: isApproved
-        ? `คำขอยืม "${request.listing.title}" ได้รับการอนุมัติ`
-        : `คำขอยืม "${request.listing.title}" ถูกปฏิเสธ`,
-      body: dto.response_message,
+        ? `คำขอ "${request.listing.title}" ได้รับการอนุมัติ`
+        : `คำขอ "${request.listing.title}" ถูกปฏิเสธ`,
+      body: dto.responseMessage,
       refListingId: request.listing.id,
       refRequestId: request.id,
     });
@@ -142,94 +168,104 @@ export class BorrowRequestsService {
   }
 
   private async markReturned(
-    request: Awaited<ReturnType<PrismaService['borrowRequest']['findUniqueOrThrow']>> & {
-      listing: { ownerCoreUserId: string; id: string; title: string };
-    },
-    user: GatewayUser,
+    request: { id: string; status: string; requesterCoreUserId: string; listing: { id: string; title: string; ownerCoreUserId: string; listingType: string } },
+    user: CoreHubIdentity,
   ) {
-    // ทั้งผู้ยืมและเจ้าของ confirm ว่าคืนแล้วได้ (กันเคสอีกฝ่ายลืม/ไม่ว่าง)
+    // GIVEAWAY ไม่มีวงจรคืน — จบที่การส่งมอบตามขอบเขตที่ตัดสินไว้
+    if (request.listing.listingType === 'GIVEAWAY') {
+      throw conflict('รายการให้ต่อไม่มีการคืน จบที่การส่งมอบแล้ว', { listingType: 'GIVEAWAY' });
+    }
+
+    const coreUserId = user.coreUserId;
     const isParty =
-      request.requesterCoreUserId === user.coreUserId ||
-      request.listing.ownerCoreUserId === user.coreUserId;
-    if (!isParty) {
-      throw forbidden('ไม่ใช่คู่กรณีของคำขอยืมนี้');
-    }
-    if (request.status !== 'approved' && request.status !== 'overdue') {
-      throw conflict('คำขอนี้ยังไม่อยู่ในสถานะที่คืนได้', {
-        current_status: request.status,
-      });
+      request.requesterCoreUserId === coreUserId ||
+      request.listing.ownerCoreUserId === coreUserId;
+    if (!isParty) throw forbidden('ไม่ใช่คู่กรณีของคำขอยืมนี้');
+
+    if (request.status !== 'APPROVED' && request.status !== 'OVERDUE') {
+      throw conflict('คำขอนี้ยังไม่อยู่ในสถานะที่คืนได้', { currentStatus: request.status });
     }
 
-    const [updatedRequest] = await this.prisma.$transaction([
-      this.prisma.borrowRequest.update({
-        where: { id: request.id },
-        data: { status: 'returned', returnedAt: new Date() },
+    return {
+      data: await this.prisma.$transaction(async (tx) => {
+        const changed = await tx.borrowRequest.updateMany({
+          where: { id: request.id, status: { in: ['APPROVED', 'OVERDUE'] } },
+          data: { status: 'RETURNED', returnedAt: new Date() },
+        });
+        if (changed.count === 0) {
+          throw conflict('คำขอนี้เพิ่งถูกแจ้งคืนไปแล้ว', { currentStatus: request.status });
+        }
+        await tx.listing.updateMany({
+          where: { id: request.listing.id, status: 'BORROWED' },
+          data: { status: 'AVAILABLE', lastActivityAt: new Date() },
+        });
+        return tx.borrowRequest.findUniqueOrThrow({ where: { id: request.id } });
       }),
-      this.prisma.listing.update({
-        where: { id: request.listing.id },
-        data: { status: 'available', lastActivityAt: new Date() },
-      }),
-    ]);
-
-    return { data: updatedRequest };
+    };
   }
 
-  // ===== เรียกจาก scheduled task (ดู src/tasks) — implement หลักการ fail-safe =====
+  // ===== เรียกจาก scheduled task (ดู src/tasks) =====
+  // tech-stack.md ข้อ 1.4.1(1): ต้องเป็นคำสั่ง UPDATE เดียวที่มีเงื่อนไขครบใน WHERE
+  // ห้ามดึงรายการออกมาก่อนแล้ววนแก้ทีละแถว (ไม่ idempotent เมื่อรันซ้อนกัน)
+  // ใช้ RETURNING เพื่อรู้ว่าแถวไหนถูกแตะจริง แล้วค่อยส่งแจ้งเตือนตามหลัง
 
-  /** เจ้าของไม่ตอบภายใน PENDING_EXPIRE_DAYS วัน -> auto-expire คืนของกลับเป็น available */
+  /** เจ้าของไม่ตอบภายใน PENDING_EXPIRE_DAYS วัน -> EXPIRED และคืน listing เป็น AVAILABLE */
   async autoExpireStalePending() {
-    const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - PENDING_EXPIRE_DAYS);
+    const cutoff = new Date(Date.now() - PENDING_EXPIRE_DAYS * 24 * 60 * 60 * 1000);
 
-    const stale = await this.prisma.borrowRequest.findMany({
-      where: { status: 'pending', requestedAt: { lt: cutoff } },
-      include: { listing: true },
-    });
+    const rows = await this.prisma.$queryRaw<AffectedRequestRow[]>`
+      WITH expired AS (
+        UPDATE borrow_requests
+           SET status = 'EXPIRED', updated_at = now()
+         WHERE status = 'PENDING' AND requested_at < ${cutoff}
+        RETURNING id, listing_id, requester_core_user_id
+      ), freed AS (
+        UPDATE listings
+           SET status = 'AVAILABLE', last_activity_at = now(), updated_at = now()
+         WHERE id IN (SELECT listing_id FROM expired) AND status = 'PENDING'
+        RETURNING id
+      )
+      SELECT e.id, e.listing_id, e.requester_core_user_id, l.title
+        FROM expired e
+        JOIN listings l ON l.id = e.listing_id
+    `;
 
-    for (const req of stale) {
-      await this.prisma.$transaction([
-        this.prisma.borrowRequest.update({
-          where: { id: req.id },
-          data: { status: 'expired' },
-        }),
-        this.prisma.listing.update({
-          where: { id: req.listingId },
-          data: { status: 'available' },
-        }),
-      ]);
+    for (const row of rows) {
       await this.notifications.create({
-        recipientCoreUserId: req.requesterCoreUserId,
-        type: 'request_rejected',
-        title: `คำขอยืม "${req.listing.title}" หมดเวลารอ`,
+        recipientCoreUserId: row.requester_core_user_id,
+        type: 'REQUEST_REJECTED',
+        title: `คำขอ "${row.title}" หมดเวลารอ`,
         body: `เจ้าของไม่ตอบกลับภายใน ${PENDING_EXPIRE_DAYS} วัน ระบบยกเลิกคำขอให้อัตโนมัติ`,
-        refRequestId: req.id,
-        refListingId: req.listingId,
+        refRequestId: row.id,
+        refListingId: row.listing_id,
       });
     }
-    return stale.length;
+    return rows.length;
   }
 
-  /** เกินกำหนดคืน -> auto-flag เป็น overdue ให้ Admin เห็นทันทีโดยไม่ต้องไล่เช็คเอง */
+  /** เกินกำหนดคืน -> OVERDUE (เฉพาะ BORROW เท่านั้น GIVEAWAY ไม่มีกำหนดคืน) */
   async autoFlagOverdue() {
-    const now = new Date();
-    const overdue = await this.prisma.borrowRequest.findMany({
-      where: { status: 'approved', dueDate: { lt: now } },
-      include: { listing: true },
-    });
+    const rows = await this.prisma.$queryRaw<AffectedRequestRow[]>`
+      UPDATE borrow_requests br
+         SET status = 'OVERDUE', updated_at = now()
+        FROM listings l
+       WHERE l.id = br.listing_id
+         AND br.status = 'APPROVED'
+         AND br.due_date IS NOT NULL
+         AND br.due_date < now()
+         AND l.listing_type = 'BORROW'
+      RETURNING br.id, br.listing_id, br.requester_core_user_id, l.title
+    `;
 
-    for (const req of overdue) {
-      await this.prisma.borrowRequest.update({
-        where: { id: req.id },
-        data: { status: 'overdue' },
-      });
+    for (const row of rows) {
       await this.notifications.create({
-        recipientCoreUserId: req.requesterCoreUserId,
-        type: 'overdue_flag',
-        title: `เกินกำหนดคืน "${req.listing.title}" แล้ว`,
-        refRequestId: req.id,
-        refListingId: req.listingId,
+        recipientCoreUserId: row.requester_core_user_id,
+        type: 'OVERDUE_FLAG',
+        title: `เกินกำหนดคืน "${row.title}" แล้ว`,
+        refRequestId: row.id,
+        refListingId: row.listing_id,
       });
     }
-    return overdue.length;
+    return rows.length;
   }
 }

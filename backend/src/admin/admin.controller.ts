@@ -1,13 +1,13 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { ResolveReportDto } from './dto/resolve-report.dto';
-import { RequireAuthGuard } from '../common/guards/require-auth.guard';
-import { AdminGuard } from '../common/guards/admin.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { GatewayUser } from '../common/middleware/gateway-auth.middleware';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CoreHubIdentity } from '../auth/core-hub-identity';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { Permission } from '../auth/permissions';
 
-// resource: /api/v1/admin/... — เฉพาะ Admin สาขาเท่านั้น (RequireAuthGuard ก่อน AdminGuard เสมอ)
-@UseGuards(RequireAuthGuard, AdminGuard)
+// ทุก endpoint ในนี้ต้องมีสิทธิ์ admin:access (Layer 2)
+@RequirePermissions(Permission.ADMIN_ACCESS)
 @Controller('v1/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -24,9 +24,9 @@ export class AdminController {
 
   @Patch('reports/:id')
   resolveReport(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() dto: ResolveReportDto,
-    @CurrentUser() user: GatewayUser,
+    @CurrentUser() user: CoreHubIdentity,
   ) {
     return this.adminService.resolveReport(id, dto, user);
   }

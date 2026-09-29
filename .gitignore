@@ -11,3 +11,10 @@ generated/
 *.pem
 *.key
 !.env.example
+dev/
+*.tsbuildinfo
+
+# Local development helpers
+backend/postman/
+backend/scripts/dev-token.ts
+backend/test/helpers/token-factory.ts

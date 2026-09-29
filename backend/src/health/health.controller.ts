@@ -1,13 +1,26 @@
 import { Controller, Get } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Public } from '../auth/decorators/public.decorator';
+import { PrismaService } from '../prisma/prisma.service';
+import { serviceUnavailable } from '../common/exceptions/app.exception';
 
-// GET /api/health → 200 { success: true, data: { status: "ok", service: "csmju-campusshare" } }
-// ห้ามมีเวอร์ชัน (ไม่ใช่ /api/v1/health — อันนั้นเป็นของ Core Hub เท่านั้น)
-// "service" ต้องตรงกับ name ใน subsystem.yaml เป๊ะ (aie-workflow.md ข้อ 3)
-// public — ต้องประกาศใน subsystem.yaml -> public_endpoints ด้วย (แต่ยังไม่ต้อง auth guard จริงจนกว่าจะถึงขั้น 4)
+// GET /api/health — api-conventions.md v1.1 ข้อ 8 (public, ไม่มีเวอร์ชัน)
+// data.service ต้องตรงกับ name ใน subsystem.yaml เป๊ะ จึงอ่านจาก config ไม่ hardcode
 @Controller('health')
 export class HealthController {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  @Public()
   @Get()
-  check() {
-    return { data: { status: 'ok', service: 'csmju-campusshare' } };
+  async check() {
+    // DB คือสิ่งที่ระบบพึ่งพา — ล่มชั่วคราวตอบ 503 + Retry-After (api-conventions.md ข้อ 4)
+    // ไม่ใช่ 500 เพราะ 503 บอก client ว่า "ลองใหม่ได้" ส่วน 500 คือบั๊กที่ลองกี่ครั้งก็เหมือนเดิม
+    if (!(await this.prisma.isReachable())) {
+      throw serviceUnavailable('ฐานข้อมูลไม่พร้อมใช้งานชั่วคราว', 10);
+    }
+    return { data: { status: 'ok', service: this.config.get<string>('subsystem.name') } };
   }
 }

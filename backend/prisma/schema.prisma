@@ -13,54 +13,57 @@ datasource db {
   //url      = env("DATABASE_URL")
 }
 
+// data-dictionary.md ข้อ 9.1: enum ใน Prisma = PascalCase · ค่า = UPPER_SNAKE_CASE
+
 enum ListingType {
-  borrow
-  giveaway
+  BORROW // ให้ยืม — มีวงจรคืน
+  GIVEAWAY // ให้ต่อ — จบที่การส่งมอบ ไม่มีการคืน
 }
 
 enum ListingStatus {
-  available
-  pending
-  borrowed
-  unavailable
-  archived // auto-archive เมื่อไม่มีการอัปเดตนาน (ดูหลักการ fail-safe)
+  AVAILABLE
+  PENDING
+  BORROWED
+  GIVEN_AWAY // สถานะสิ้นสุดของ GIVEAWAY ที่ส่งมอบแล้ว — เข้าแล้วไม่กลับมา AVAILABLE อีก
+  UNAVAILABLE
+  ARCHIVED // auto-archive เมื่อไม่มีการอัปเดตนาน (ดูหลักการ fail-safe)
 }
 
 enum ListingCategory {
-  books_materials // หนังสือ/เอกสารประกอบการเรียน
-  calculators // เครื่องคิดเลข
-  cables_connectors // สาย HDMI/LAN/Adapter
-  project_equipment // อุปกรณ์ทำ Project
-  camera_photography // กล้อง/Tripod
-  tools // อุปกรณ์เครื่องมือ
-  club_activity_gear // อุปกรณ์กิจกรรมสาขา
+  BOOKS_MATERIALS // หนังสือ/เอกสารประกอบการเรียน
+  CALCULATORS // เครื่องคิดเลข
+  CABLES_CONNECTORS // สาย HDMI/LAN/Adapter
+  PROJECT_EQUIPMENT // อุปกรณ์ทำ Project
+  CAMERA_PHOTOGRAPHY // กล้อง/Tripod
+  TOOLS // อุปกรณ์เครื่องมือ
+  CLUB_ACTIVITY_GEAR // อุปกรณ์กิจกรรมสาขา
 }
 
 enum BorrowRequestStatus {
-  pending
-  approved
-  rejected
-  returned
-  overdue // auto-flag เมื่อเกินกำหนดคืน (ไม่ต้องรอ Admin ไล่เช็ค)
-  expired // auto-reject เมื่อเจ้าของไม่ตอบภายในเวลาที่กำหนด
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+  OVERDUE // auto-flag เมื่อเกินกำหนดคืน (ไม่ต้องรอ Admin ไล่เช็ค)
+  EXPIRED // auto-reject เมื่อเจ้าของไม่ตอบภายในเวลาที่กำหนด
 }
 
 enum NotificationType {
-  new_request
-  request_approved
-  request_rejected
-  return_reminder
-  overdue_flag
+  NEW_REQUEST
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  RETURN_REMINDER
+  OVERDUE_FLAG
 }
 
 enum ReportTargetType {
-  listing
-  borrow_request
+  LISTING
+  BORROW_REQUEST
 }
 
 enum ReportStatus {
-  open
-  resolved
+  OPEN
+  RESOLVED
 }
 
 model Listing {
@@ -70,7 +73,7 @@ model Listing {
   description     String?
   category        ListingCategory
   listingType     ListingType     @map("listing_type")
-  status          ListingStatus   @default(available)
+  status          ListingStatus   @default(AVAILABLE)
 
   // เตรียมรองรับ multi-department ในอนาคต — ตอนนี้ hardcode "computer-science" ที่ชั้น service
   department String @default("computer-science")
@@ -97,7 +100,7 @@ model BorrowRequest {
   message             String? // ข้อความสั้นตอนขอยืม
   responseMessage     String? @map("response_message") // ข้อความสั้นตอนเจ้าของตอบ
 
-  status BorrowRequestStatus @default(pending)
+  status BorrowRequestStatus @default(PENDING)
 
   dueDate DateTime? @map("due_date") // กำหนดคืน (ระบุตอนอนุมัติ)
 
@@ -140,7 +143,7 @@ model Report {
   reporterCoreUserId String           @map("reporter_core_user_id")
   reason             String
 
-  status               ReportStatus @default(open)
+  status               ReportStatus @default(OPEN)
   resolvedByCoreUserId String?      @map("resolved_by_core_user_id") // coreUserId ของ Admin ที่ปิดเรื่อง
   resolvedAt           DateTime?    @map("resolved_at")
 

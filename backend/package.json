@@ -12,6 +12,10 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage",
+    "test:cron": "ts-node src/dev/test-cron.ts",
     "openapi:generate": "ts-node src/generate-openapi.ts"
   },
   "prisma": {
@@ -39,6 +43,7 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
     "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
     "@types/supertest": "^6.0.2",

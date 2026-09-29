@@ -1,36 +1,34 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
 import { BorrowRequestsService } from './borrow-requests.service';
 import { CreateBorrowRequestDto } from './dto/create-borrow-request.dto';
 import { UpdateBorrowRequestStatusDto } from './dto/update-borrow-request-status.dto';
-import { RequireAuthGuard } from '../common/guards/require-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
-import { GatewayUser } from '../common/middleware/gateway-auth.middleware';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { CoreHubIdentity } from '../auth/core-hub-identity';
+import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
+import { Permission } from '../auth/permissions';
 
-// resource: /api/v1/borrow-requests — ต้อง login ทุก endpoint (ไม่มี public ในโมดูลนี้)
-@UseGuards(RequireAuthGuard)
 @Controller('v1/borrow-requests')
 export class BorrowRequestsController {
   constructor(private readonly borrowRequestsService: BorrowRequestsService) {}
 
-  // ขอยืม
+  @RequirePermissions(Permission.BORROW_REQUEST_CREATE)
   @Post()
-  create(@Body() dto: CreateBorrowRequestDto, @CurrentUser() user: GatewayUser) {
+  create(@Body() dto: CreateBorrowRequestDto, @CurrentUser() user: CoreHubIdentity) {
     return this.borrowRequestsService.create(dto, user);
   }
 
-  // ดูคำขอของฉัน (ทั้งฝั่งขอยืมและฝั่งเจ้าของ)
+  @RequirePermissions(Permission.BORROW_REQUEST_READ_OWN)
   @Get('mine')
-  findMine(@CurrentUser() user: GatewayUser) {
+  findMine(@CurrentUser() user: CoreHubIdentity) {
     return this.borrowRequestsService.findMine(user);
   }
 
-  // อนุมัติ/ปฏิเสธ/แจ้งคืน — รวมเป็น endpoint เดียว เปลี่ยนแค่ค่า status ใน body
-  // (ไม่มี /approve /reject /return เพราะ api-conventions.md ห้าม verb ใน path)
+  @RequirePermissions(Permission.BORROW_REQUEST_UPDATE_OWN)
   @Patch(':id')
   updateStatus(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() dto: UpdateBorrowRequestStatusDto,
-    @CurrentUser() user: GatewayUser,
+    @CurrentUser() user: CoreHubIdentity,
   ) {
     return this.borrowRequestsService.updateStatus(id, dto, user);
   }

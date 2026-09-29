@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.git
+.github
+standards
+**/dist
+**/.next
+**/coverage
+**/generated
+*.zip
+.env
+**/.env
+**/.env.local
+**/*.pem
+**/*.key

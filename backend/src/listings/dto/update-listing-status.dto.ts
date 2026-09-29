@@ -5,5 +5,5 @@ import { ListingStatus } from '@prisma/client';
 // ห้ามตั้งเป็น borrowed/pending เอง — สถานะนั้นระบบเปลี่ยนให้อัตโนมัติตาม borrow request เท่านั้น
 export class UpdateListingStatusDto {
   @IsEnum(ListingStatus)
-  status: ListingStatus;
+  status!: ListingStatus;
 }
