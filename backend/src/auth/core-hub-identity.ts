@@ -38,6 +38,8 @@ export interface CoreHubTokenPayload {
   aud: string | string[];
   iat?: number;
   exp?: number;
+  /** ชื่อระบบย่อยที่ token นี้ออกให้ — Core Hub กำลังจะเริ่มใส่ (auth-contract v1.2 ขั้น 10) */
+  azp?: string;
 }
 
 // core role มี 6 ค่าปิด ตาม authorization.md ข้อ 2 + contracts/jwt-contract.json

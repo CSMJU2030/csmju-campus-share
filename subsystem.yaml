@@ -2,12 +2,12 @@ name: csmju-campus-share
 standards_version: "1.0.0"
 conformance_level: L3
 
-# origin ที่เบราว์เซอร์เห็น = frontend (Next.js) ซึ่ง proxy /api, /auth, /health ไป backend :3002
-# callback_url ที่ลงทะเบียนกับ Core Hub ต้องเป็น <base_url><callback_path> = http://localhost:3003/auth/callback
-# (ถ้าชี้ไป :3002 ผู้ใช้จะถูก redirect ไปโผล่หน้า 404 ของ API server หลัง login สำเร็จ)
-base_url: http://localhost:3003
-core_hub_url: http://localhost:3000
-core_hub_web_url: http://localhost:3000   # เว็บของ Core Hub ที่ /auth/login ส่งเบราว์เซอร์ไป (subsystem-registry.md ข้อ 6)
+# พอร์ตที่ผู้ดูแล dev server กำหนดให้ทีม (repo-structure.md: frontend 32xx · backend 42xx)
+# frontend เป็นประตูเดียว proxy /api/* และ /auth/* ไป backend :4205
+# callback ที่ลงทะเบียนจึงใช้พอร์ต frontend เสมอ (connect-core-hub.md ข้อ 3)
+base_url: http://localhost:3205
+core_hub_url: https://csmju2030.jowave.com
+core_hub_web_url: https://csmju2030.jowave.com   # Core Hub ตัวจริง (connect-core-hub.md)
 callback_path: /auth/callback
 
 # api-conventions.md v1.1 ข้อ 1 + 7.6: public ได้เฉพาะ 4 path นี้เท่านั้น
@@ -32,6 +32,49 @@ probes:
       title: "หนังสือ Data Structures"
       category: "BOOKS_MATERIALS"
       listingType: "BORROW"
+
+# ui-design-system.md ข้อ 17.0: component ในข้อ 7.1 ที่ยังไม่มีใน @/csmju
+# ให้ประกอบเองจาก class ใน ui.ts + token เท่านั้น แล้วประกาศไว้ตรงนี้
+# (ส่งคำขอตามข้อ 17.4 ให้ PM ย้ายเข้าส่วนกลาง -> UI-REQ-03)
+local_components:
+  - name: EmptyState
+    path: frontend/src/components/shared/States.tsx
+    reason: "ข้อ 9.2 บังคับทุกที่ที่แสดงรายการ แต่ยังไม่มีใน @/csmju"
+  - name: ErrorState
+    path: frontend/src/components/shared/States.tsx
+    reason: "ข้อ 9.3 mapping error.code -> UI แต่ยังไม่มีใน @/csmju"
+  - name: LoadingState
+    path: frontend/src/components/shared/States.tsx
+    reason: "ข้อ 9.1 แต่ยังไม่มีใน @/csmju"
+  - name: FormField
+    path: frontend/src/components/shared/FormField.tsx
+    reason: "ข้อ 7.1/8.1 label+input+error ยังไม่มีใน @/csmju"
+  - name: ConfirmDialog
+    path: frontend/src/components/shared/ConfirmDialog.tsx
+    reason: "แทน Modal/ConfirmDeleteModal ของกลางที่ยังคัดลอกมาไม่ได้ (รอ template csmju-subsystem-web)"
+  - name: StatusBadge
+    path: frontend/src/components/shared/Badges.tsx
+    reason: "แทน StatusBadge ของกลางที่ยังคัดลอกมาไม่ได้ (รอ template csmju-subsystem-web)"
+  - name: ListingCard
+    path: frontend/src/components/shared/ListingCard.tsx
+    reason: "การ์ดเฉพาะโดเมนของระบบนี้ ประกอบจาก cardClass + token"
+  - name: AppFrame
+    path: frontend/src/components/shared/AppFrame.tsx
+    reason: "ชั่วคราวแทน CsmjuAppShell (ข้อ 5.1 sidebar 256px) จนกว่าจะได้ template — U1 รอ PM"
+
+# ของกลางที่คัดลอกมาไว้ใน frontend/src/csmju/ (ห้ามแก้ · ข้อ 17.0)
+design_system:
+  source_repo: csmju-core-hub
+  vendored_path: frontend/src/csmju
+  files:
+    - frontend/src/csmju/ui.ts
+    - frontend/src/csmju/icons.tsx
+    - frontend/src/app/globals.css
+  local_overrides:
+    - path: frontend/src/app/local-overrides.css
+      reason: "ข้อ 4.1 บรรทัด 413-414 สั่งให้ --font-display มี var(--font-noto-thai) ต่อท้าย แต่ต้นทางยังไม่แก้"
+    - path: frontend/src/lib/ui.ts
+      reason: "ข้อ 7.2/6.1/12.1(5) สั่งให้ปุ่มมี focus-visible + disabled + min-h-11 แต่ต้นทางยังไม่มี"
 
 owners:
   pl: "@csmju2030/pl-campus-share"

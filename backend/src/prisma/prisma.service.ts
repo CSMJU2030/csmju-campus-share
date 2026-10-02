@@ -27,6 +27,12 @@ export class PrismaService
   }
 
   async onModuleInit() {
+    // โหมดสร้าง openapi.json (API-01) บูต AppModule เพื่ออ่าน decorator เท่านั้น ไม่แตะข้อมูล
+    // CI ไม่มีฐานข้อมูล ถ้าไม่ข้ามตรงนี้ `pnpm run generate:openapi` จะล้มทุกครั้ง
+    if (process.env.OPENAPI_GENERATE === '1') {
+      return;
+    }
+
     await this.$connect();
     // pg.Pool ต่อแบบ lazy — ถ้าไม่ยิง query จริง แอปจะบูตผ่านทั้งที่ DB ล่ม
     // แล้วไปพังตอน request แรกเป็น 500 ซึ่ง debug ยาก จึงตรวจให้ล้มตั้งแต่ตอนบูต

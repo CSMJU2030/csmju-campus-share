@@ -31,5 +31,6 @@ export const CATEGORY_LABEL: Record<string, string> = {
   CAMERA_PHOTOGRAPHY: "กล้อง/ขาตั้งกล้อง",
   TOOLS: "เครื่องมือช่าง",
   CLUB_ACTIVITY_GEAR: "อุปกรณ์กิจกรรมสาขา",
+  OTHER: "อื่นๆ",
 };
 export const CATEGORY_KEYS = Object.keys(CATEGORY_LABEL);

@@ -9,6 +9,16 @@ import { mapCoreRole } from './core-hub-identity';
 import { decodeStateCookie, encodeStateCookie, generateState, isValidNext, readCookie, timingSafeEqual } from './sso.util';
 const DEFAULT_NEXT = '/';
 
+/** auth-contract.md v1.2 ข้อ 5.1 — เบราว์เซอร์ที่ state ไม่ตรงต้องได้หน้าที่มีปุ่มเริ่มใหม่ ไม่ใช่ JSON เปล่า */
+const RETRY_LOGIN_PAGE = `<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>เข้าสู่ระบบอีกครั้ง · CampusShare</title></head>
+<body style="font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;line-height:1.6">
+<h1 style="font-size:1.5rem">เข้าสู่ระบบไม่สำเร็จ</h1>
+<p>การเข้าสู่ระบบใช้เวลานานเกินไป หรือเบราว์เซอร์ไม่ได้เก็บคุกกี้ไว้ กรุณาลองใหม่อีกครั้ง</p>
+<p><a href="/auth/login" style="display:inline-block;min-height:44px;line-height:44px;padding:0 1.25rem;border-radius:.5rem;background:#2154d9;color:#fff;text-decoration:none;font-weight:600">เข้าสู่ระบบอีกครั้ง</a></p>
+</body></html>`;
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -24,6 +34,8 @@ export class AuthController {
     // ตรวจ next กับ origin ที่ตั้งค่าไว้ ไม่ใช่ req.get('host') ซึ่ง client ปลอมได้
     const next = isValidNext(nextRaw, this.authService.publicOrigin) ? nextRaw! : DEFAULT_NEXT;
 
+    // state นี้พิสูจน์ได้แค่ว่า "เบราว์เซอร์นี้เริ่ม login ผ่านเรา" — เทียบขากลับไม่ได้
+    // เพราะ Core Hub v1.0.0 ทิ้ง state ของระบบย่อยแล้วสร้างของตัวเอง (ดู auth.service.ts)
     const state = generateState();
     res.cookie(
       this.authService.stateCookieName,
@@ -61,12 +73,20 @@ export class AuthController {
     }
 
     const decoded = rawCookie ? decodeStateCookie(rawCookie) : null;
+
+    // auth-contract.md v1.2 ข้อ 5.1 บรรทัด 203:
+    //   มี state แต่ไม่มีคุกกี้ หรือไม่ตรงกัน -> 401 **ห้าม redirect ซ้ำ**
+    //   (เบราว์เซอร์ที่ไม่เก็บคุกกี้จะวนไม่จบ) · ที่ขอ text/html ให้หน้าที่มีปุ่ม "เข้าสู่ระบบอีกครั้ง"
+    // Core Hub ส่ง state ของเราต่อตรงตัว (บรรทัด 181) การเทียบจึงมีผลจริง
     if (!decoded || !timingSafeEqual(decoded.state, stateParam)) {
       this.authEvents.jwtRejected({
         reason: decoded ? TokenRejectionReason.SSO_STATE_MISMATCH : TokenRejectionReason.SSO_STATE_MISSING,
+        kid: null,
         path: req.path,
       });
-      // ห้าม redirect ซ้ำตามข้อ 5.1 — ตอบ 401 ตรงๆ
+      if ((req.header('accept') ?? '').includes('text/html')) {
+        return res.status(401).type('html').send(RETRY_LOGIN_PAGE);
+      }
       throw unauthorized('SSO state ไม่ตรงกันหรือหมดอายุ');
     }
 

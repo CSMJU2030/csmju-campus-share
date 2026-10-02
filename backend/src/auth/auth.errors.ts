@@ -11,6 +11,10 @@ export enum TokenRejectionReason {
   INVALID_ISSUER = 'invalid_issuer',
   INVALID_AUDIENCE = 'invalid_audience',
   INVALID_CLAIMS = 'invalid_claims',
+  /** ขั้น 9 — exp - iat เกิน 900+60 วินาที (กัน refresh token ถูกใช้แทน access token) */
+  TOKEN_LIFETIME_EXCEEDED = 'token_lifetime_exceeded',
+  /** ขั้น 10 — azp ไม่ตรงชื่อระบบตัวเอง (กัน token ที่ออกให้ระบบอื่น) */
+  INVALID_AZP = 'invalid_azp',
   // เหตุผลฝั่ง SSO (contracts/log-events.json -> failureReasons)
   SSO_RESTART_WITHOUT_STATE = 'sso_restart_without_state',
   SSO_STATE_MISSING = 'sso_state_missing',

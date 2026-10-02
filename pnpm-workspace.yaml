@@ -9,7 +9,7 @@ packages:
 # อนุญาตเฉพาะสองตัวนี้เท่านั้น — @parcel/watcher และ unrs-resolver เป็น native speedup
 # ที่ไม่มีก็ทำงานได้ปกติ จึงไม่เปิดช่องให้รัน script โดยไม่จำเป็น
 allowBuilds:
-  '@parcel/watcher': true
   '@prisma/engines': true
   prisma: true
-  unrs-resolver: true
+  '@parcel/watcher': false
+  unrs-resolver: false

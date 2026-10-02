@@ -51,18 +51,26 @@ export class AuthService {
     };
   }
 
-  /** ห้ามส่ง callback_url ไปด้วย — Core Hub รู้ callback_url จากทะเบียนแล้ว */
+  /**
+   * จุดเริ่ม SSO — auth-contract.md v1.2 (standards 1.7.0) ข้อ 5 บรรทัด 149
+   *
+   *   GET /auth/login -> 302 {CORE_HUB_WEB_URL}/sso/authorize?subsystem=<ชื่อ>&state=<state>
+   *
+   * ห้ามส่ง `callback_url` ไปด้วย — Core Hub รู้จากทะเบียนแล้ว (ข้อ 5 ตาราง endpoint)
+   * Core Hub "ส่ง state ต่อตรงตัว ห้ามสร้างเอง" (ข้อ 5 บรรทัด 181) เราจึงเทียบ state ขากลับได้
+   */
   buildAuthorizeUrl(state: string): string {
     const webUrl = this.config.get<string>('coreHub.webUrl');
     const params = new URLSearchParams({ subsystem: this.subsystemName, state });
     return `${webUrl}/sso/authorize?${params.toString()}`;
   }
 
+  /** ออกจากระบบไปหน้า /logout ของเว็บ Core Hub (connect-core-hub.md ข้อ 6 ข้อทดสอบที่ 4) */
   buildLogoutUrl(): string {
     return `${this.config.get<string>('coreHub.webUrl')}/logout`;
   }
 
-  /** verify ครบ 8 ขั้นผ่าน verifier ตัวเดียวกับ guard — ห้ามเชื่อ token จาก URL เฉยๆ */
+  /** verify ครบ 10 ขั้นผ่าน verifier ตัวเดียวกับ guard — ห้ามเชื่อ token จาก URL เฉยๆ */
   async verifyIncomingToken(token: string) {
     return this.verifier.verify(token);
   }

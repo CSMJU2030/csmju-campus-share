@@ -33,7 +33,7 @@ export class JwksService {
   private get jwksUrl(): string {
     return this.config.get<string>(
       "coreHub.jwksUrl",
-      "http://localhost:3000/api/v1/.well-known/jwks.json",
+      "https://csmju2030.jowave.com/api/v1/.well-known/jwks.json",
     );
   }
 

@@ -32,17 +32,17 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      PORT: "3002"
+      PORT: "4205"
       # ในเครือข่ายของ compose ใช้ชื่อ service "db" และ port ภายใน 5432
       DATABASE_URL: postgresql://postgres:postgres@db:5432/csmju_campus_share_db?schema=public
       SUBSYSTEM_NAME: csmju-campus-share
-      PUBLIC_ORIGIN: http://localhost:3003
+      PUBLIC_ORIGIN: http://localhost:3205
       COREHUB_WEB_URL: ${COREHUB_WEB_URL:-http://host.docker.internal:3000}
       COREHUB_JWKS_URL: ${COREHUB_JWKS_URL:-http://host.docker.internal:3000/api/v1/.well-known/jwks.json}
       COREHUB_ISSUER: core-hub
       COREHUB_AUDIENCE: csmju2030
     ports:
-      - "3002:3002"
+      - "4205:4205"
     depends_on:
       db:
         condition: service_healthy
@@ -58,9 +58,9 @@ services:
     environment:
       NODE_ENV: production
       # next.config.ts proxy /api, /auth, /health ไปที่นี่ (ต้องเป็นชื่อ service ไม่ใช่ localhost)
-      BACKEND_ORIGIN: http://backend:3002
+      BACKEND_ORIGIN: http://backend:4205
     ports:
-      - "3003:3003"
+      - "3205:3205"
     depends_on:
       - backend
 

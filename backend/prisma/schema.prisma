@@ -37,6 +37,7 @@ enum ListingCategory {
   CAMERA_PHOTOGRAPHY // กล้อง/Tripod
   TOOLS // อุปกรณ์เครื่องมือ
   CLUB_ACTIVITY_GEAR // อุปกรณ์กิจกรรมสาขา
+  OTHER // อื่นๆ — ต้องอยู่ท้ายสุดเสมอ ไม่งั้นตัวกรองบนหน้าเว็บจะเรียงเพี้ยน
 }
 
 enum BorrowRequestStatus {

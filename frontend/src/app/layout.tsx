@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Noto_Sans_Thai, Plus_Jakarta_Sans } from "next/font/google";
 import { AppFrame } from "@/components/shared/AppFrame";
 import "./globals.css";
+import "./local-overrides.css"; // ดูหมายเหตุในไฟล์ — ลบเมื่อ csmju-core-hub แก้ต้นทางแล้ว
 
 const jakarta = Plus_Jakarta_Sans({ variable: "--font-jakarta", subsets: ["latin"], weight: ["400", "600", "700", "800"] });
 const noto = Noto_Sans_Thai({ variable: "--font-noto-thai", subsets: ["latin", "thai"], weight: ["400", "500", "600", "700"] });

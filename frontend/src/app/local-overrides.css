@@ -1,0 +1,16 @@
+/* override ของ CampusShare — โหลดหลัง globals.css
+ *
+ * globals.css เป็นของกลาง (ห้ามแก้ · ui-design-system.md §17.0) แต่เอกสารเดียวกันระบุว่า
+ * ไฟล์ของกลางยังมีจุดที่ "ต้องแก้ในโค้ด" อยู่ ไฟล์นี้จึงแก้ค่าทับไว้ชั่วคราว
+ * เพื่อไม่ให้ globals.css ต่างจาก csmju-core-hub แม้แต่ไบต์เดียว
+ *
+ * 🔻 ลบไฟล์นี้ทิ้งทันทีที่ csmju-core-hub แก้ต้นทางแล้ว (คำขอตาม §17.4 -> UI-REQ-01)
+ */
+
+/* [UI-REQ-01] ui-design-system.md §4.1 บรรทัด 413-414:
+ * "Plus Jakarta Sans ไม่มีอักขระไทย แต่ stack ของ --font-display ไม่มี Noto Sans Thai ต่อท้าย
+ *  -> หัวเรื่องภาษาไทยที่ใช้ font-display จะ fallback ไปฟอนต์ระบบ ให้เปลี่ยนเป็น ..."
+ * ทุกหัวเรื่องในระบบเราเป็นภาษาไทย ถ้าไม่ทับตรงนี้หน้าจอจะเพี้ยนต่างกันทุกเครื่อง */
+:root {
+  --font-display: var(--font-jakarta), var(--font-noto-thai), ui-sans-serif, system-ui, sans-serif;
+}

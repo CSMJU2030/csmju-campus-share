@@ -2,7 +2,7 @@
   "name": "campusshare-frontend",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3003",
+    "dev": "next dev -p 3205",
     "build": "next build",
     "start": "next start",
     "typecheck": "next typegen && tsc --noEmit"

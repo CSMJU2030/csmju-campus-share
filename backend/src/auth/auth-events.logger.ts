@@ -30,8 +30,12 @@ export class AuthEventsLogger {
     this.emit('log', 'jwt.verification.success', fields);
   }
 
-  jwtRejected(fields: { reason: string; kid?: string; path?: string }): void {
-    this.emit('warn', 'jwt.verification.failure', fields);
+  /**
+   * contracts/log-events.json กำหนด fields = [reason, kid, path] ครบทุกตัว
+   * กรณีที่ยังไม่รู้ kid (เช่น missing_token) ต้องส่ง kid: null ไม่ใช่ละไว้
+   */
+  jwtRejected(fields: { reason: string; kid?: string | null; path?: string }): void {
+    this.emit('warn', 'jwt.verification.failure', { kid: null, ...fields });
   }
 
   unknownKid(fields: { kid: string; knownKids: string[] }): void {

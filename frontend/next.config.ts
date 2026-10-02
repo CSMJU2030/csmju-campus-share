@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 // Frontend ต้องอยู่ origin เดียวกับ backend เพื่อให้ cookie HttpOnly ใช้ได้ → proxy /api, /auth, /health ไป backend
-const BACKEND = process.env.BACKEND_ORIGIN ?? "http://localhost:3002";
+const BACKEND = process.env.BACKEND_ORIGIN ?? "http://127.0.0.1:4205";
 
 const config: NextConfig = {
   async rewrites() {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { loginUrl } from "@/lib/api";
 import { primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
+import { NotificationsIcon } from "@/csmju";
 import { EmptyState, ErrorState, LoadingState } from "./States";
 import { MeProvider, NotificationsProvider, useMe, useNotifications } from "./Providers";
 
@@ -37,7 +38,7 @@ function Frame({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             {user && (
               <Link href="/notifications" aria-label={unread ? `การแจ้งเตือน ยังไม่อ่าน ${unread} รายการ` : "การแจ้งเตือน"} className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-variant/50">
-                <svg aria-hidden="true" className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 01-3.4 0" /></svg>
+                <NotificationsIcon className="h-6 w-6" />
                 {unread > 0 && <span aria-hidden="true" className="absolute right-1 top-1 min-w-5 rounded-full bg-error px-1 text-center text-label-sm text-white">{unread > 99 ? "99+" : unread}</span>}
               </Link>
             )}
