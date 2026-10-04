@@ -26,7 +26,16 @@
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
 
-  --font-display: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  /* Brand accents */
+  --color-accent: #3b80f2;
+  --color-brand-navy: #16264d;
+  --color-brand-blue: #0d4fa8;
+  --color-brand-amber: #f59e0b;
+  --color-sso: #2d8a61;
+  --color-sso-container: #e8f5ee;
+
+  /* Plus Jakarta Sans has no Thai glyphs: Thai headings fall through to Noto Sans Thai (ui-design-system.md 4.1). */
+  --font-display: var(--font-jakarta), var(--font-noto-thai), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-noto-thai), ui-sans-serif, system-ui, sans-serif;
 
   --text-display-lg: 48px;
@@ -62,7 +71,7 @@ body {
 
 /* ---------- Brand surfaces ---------- */
 .brand-gradient {
-  background: linear-gradient(135deg, #16264d 0%, #0d4fa8 100%);
+  background: linear-gradient(135deg, var(--color-brand-navy) 0%, var(--color-brand-blue) 100%);
 }
 .glow-circle {
   position: absolute;
@@ -73,10 +82,10 @@ body {
 }
 
 .bg-btn-gradient {
-  background: linear-gradient(90deg, #2154d9 0%, #3b80f2 100%);
+  background: linear-gradient(90deg, var(--color-primary-container) 0%, var(--color-accent) 100%);
 }
 .text-gradient {
-  background: linear-gradient(90deg, #2154d9 0%, #3b80f2 100%);
+  background: linear-gradient(90deg, var(--color-primary-container) 0%, var(--color-accent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -85,7 +94,7 @@ body {
 
 /* ---------- Buttons ---------- */
 .btn-gradient {
-  background: linear-gradient(90deg, #2154d9 0%, #3b80f2 100%);
+  background: linear-gradient(90deg, var(--color-primary-container) 0%, var(--color-accent) 100%);
   background-size: 200% auto;
   transition: all 150ms ease-out;
 }
@@ -148,8 +157,8 @@ body {
   transition: all 150ms ease-in-out;
 }
 .input-field:focus {
-  box-shadow: 0 0 0 3px rgba(59, 128, 242, 0.2);
-  border-color: #3b80f2;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  border-color: var(--color-accent);
   outline: none;
 }
 .input-field::placeholder {
@@ -159,11 +168,11 @@ body {
   opacity: 0.5;
 }
 .input-error {
-  border-color: #ba1a1a !important;
-  color: #ba1a1a;
+  border-color: var(--color-error) !important;
+  color: var(--color-error);
 }
 .input-error:focus {
-  box-shadow: 0 0 0 3px rgba(186, 26, 26, 0.2) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 20%, transparent) !important;
 }
 @keyframes shake {
   0%,
@@ -196,7 +205,7 @@ body {
   appearance: none;
   width: 16px;
   height: 16px;
-  border: 1px solid #c4c5d7;
+  border: 1px solid var(--color-outline-variant);
   border-radius: 4px;
   background-color: #fff;
   cursor: pointer;
@@ -204,8 +213,8 @@ body {
   transition: all 200ms ease-in-out;
 }
 .custom-checkbox input[type="checkbox"]:checked {
-  background-color: #003cb4;
-  border-color: #003cb4;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
   animation: pop 200ms ease-in-out;
 }
 .custom-checkbox input[type="checkbox"]::after {
@@ -257,7 +266,7 @@ body {
   transform-origin: bottom left;
 }
 .link-hover:hover {
-  color: #003bb0;
+  color: var(--color-primary);
 }
 
 /* ---------- Entrance animations ---------- */

@@ -1,10 +1,15 @@
-import type { ListingStatus, ListingType, NotificationType, ReportStatus, ReportTargetType, RequestStatus } from "@/types";
+import type { ListingStatus, ListingType, NotificationType, ReportStatus, ReportTargetType, RequestStatus, SubsystemRole } from "@/types";
 
 export const formatDate = (v: string) =>
   new Intl.DateTimeFormat("th-TH-u-ca-buddhist", { dateStyle: "medium", timeZone: "Asia/Bangkok" }).format(new Date(v));
 
 // แสดงป้ายภาษาไทย ถ้าเจอค่าที่ไม่รู้จักให้แสดงค่าดิบ
 export const label = (map: Record<string, string>, key: string | null | undefined) => (key ? map[key] ?? key : "");
+
+// แสดงบทบาทข้าง avatar ใน CsmjuAppShell — ค่าตรงกับ SubsystemRole ใน backend/src/auth/permissions.ts
+export const ROLE_LABEL: Record<SubsystemRole, string> = {
+  STUDENT: "นักศึกษา", ALUMNI: "ศิษย์เก่า", LECTURER: "อาจารย์", STAFF: "บุคลากร", ADMIN: "ผู้ดูแลระบบ",
+};
 
 export const LISTING_TYPE_LABEL: Record<ListingType, string> = { BORROW: "ให้ยืม", GIVEAWAY: "ให้ต่อ" };
 export const LISTING_STATUS_LABEL: Record<ListingStatus, string> = {

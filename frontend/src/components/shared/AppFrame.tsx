@@ -1,74 +1,84 @@
 "use client";
-// ชั่วคราว: แทน <CsmjuAppShell> จน template csmju-subsystem-web พร้อม (ห้ามใช้ต่อหลังจากนั้น)
-import Link from "next/link";
+// ชั้นต่อระหว่างสถานะผู้ใช้ (client) กับ <CsmjuAppShell> ของกลาง
+// ui-design-system.md v1.3.1 ข้อ 17.0 — layout.tsx เป็น server component จึงเรียก can() ไม่ได้
+// ไฟล์นี้อ่าน useMe()/useNotifications() แล้วประกอบ prop ส่งให้ของกลางเท่านั้น ไม่มีการแก้ไฟล์ใน src/csmju/
 import { usePathname } from "next/navigation";
+import { CsmjuAppShell, type NavItem } from "@/csmju";
 import { loginUrl } from "@/lib/api";
+import { ROLE_LABEL } from "@/lib/labels";
 import { primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
-import { NotificationsIcon } from "@/csmju";
 import { EmptyState, ErrorState, LoadingState } from "./States";
 import { MeProvider, NotificationsProvider, useMe, useNotifications } from "./Providers";
 
-// Logout ต้องเป็น <form method="POST"> จริง (ห้าม fetch) เพราะ backend ตอบ 303 redirect ไป Core Hub
+/** ต้องตรงกับ display_name ใน subsystem.yaml */
+const DISPLAY_NAME = "CampusShare";
+
+/** ออกจากระบบต้องเป็น <form method="POST"> จริง (auth-contract.md ข้อ 5) เพราะ backend ตอบ 303 ไป Core Hub
+ *  ใน shell ของกลางมีปุ่มนี้อยู่แล้ว — ที่นี่ใช้เฉพาะหน้า forbidden ซึ่งไม่ได้ render shell */
 function LogoutForm({ className }: { className: string }) {
   return <form method="POST" action="/auth/logout"><button type="submit" className={className}>ออกจากระบบ</button></form>;
 }
 
+/** อักษรย่อ 2 ตัวจากอีเมล — reference-data.md 1.3 ห้ามระบบย่อยเก็บชื่อผู้ใช้ จึงไม่มีชื่อจริงให้ใช้ */
+function initialsOf(email: string): string {
+  const letters = (email.split("@")[0] ?? "").replace(/[^A-Za-z0-9]/g, "");
+  return (letters.slice(0, 2) || "??").toUpperCase();
+}
+
 function Frame({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const { state, user, can, reload } = useMe();
+  const { state, can, reload } = useMe();
   const { unread } = useNotifications();
-  const nav = [
-    { href: "/", label: "ตลาดสิ่งของ" },
-    ...(user ? [{ href: "/my-listings", label: "ของของฉัน" }, { href: "/borrow-requests", label: "คำขอ" }] : []),
-    ...(can("admin:access") ? [{ href: "/admin", label: "ผู้ดูแล" }] : []),
+
+  // ยังไม่มีผู้ใช้ = ใช้งานระบบไม่ได้ → ไม่ render shell เลย (ไม่มีเมนูให้กดอยู่ดี)
+  if (state.status !== "user") {
+    return (
+      <div className="mx-auto flex w-full max-w-[1280px] flex-1 flex-col justify-center px-4 py-8 md:px-12">
+        {state.status === "loading" ? (
+          <LoadingState />
+        ) : state.status === "forbidden" ? (
+          <EmptyState title="บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานระบบนี้" hint="หากคิดว่าเป็นข้อผิดพลาด กรุณาติดต่อผู้ดูแลระบบ หรือออกจากระบบแล้วเข้าสู่ระบบด้วยบัญชีอื่น">
+            <LogoutForm className={secondaryButtonClass} />
+          </EmptyState>
+        ) : state.status === "error" ? (
+          <ErrorState error={state.error} onRetry={reload} />
+        ) : state.redirecting ? (
+          <LoadingState />
+        ) : (
+          <EmptyState title="ยังไม่ได้เข้าสู่ระบบ" hint="ระบบพยายามพาไปเข้าสู่ระบบแล้วแต่ยังไม่สำเร็จ อาจเป็นเพราะ Core Hub ไม่พร้อมใช้งานชั่วคราว">
+            <a href={loginUrl(path)} className={primaryButtonClass}>เข้าสู่ระบบอีกครั้ง</a>
+          </EmptyState>
+        )}
+      </div>
+    );
+  }
+
+  // icon เลือกได้เฉพาะ 10 ชื่อใน NavIconName ของ CsmjuAppShell — nav[0] คือ root ที่ shell เทียบแบบ exact
+  const nav: NavItem[] = [
+    { label: "ตลาดสิ่งของ", href: "/", icon: "dashboard" },
+    { label: "ของของฉัน", href: "/my-listings", icon: "menu-book" },
+    { label: "คำขอ", href: "/borrow-requests", icon: "receipt" },
+    // ปุ่มกระดิ่งของกลางยังไม่มี badge และยังไม่มีปลายทาง → ใส่จำนวนที่ยังไม่อ่านไว้ใน label ของเมนูแทน
+    { label: unread > 0 ? `การแจ้งเตือน (${unread > 99 ? "99+" : unread})` : "การแจ้งเตือน", href: "/notifications", icon: "campaign" },
   ];
-  const active = (h: string) => (h === "/" ? path === "/" : path.startsWith(h));
-  const link = (n: (typeof nav)[number], cls: string) => (
-    <Link key={n.href} href={n.href} aria-current={active(n.href) ? "page" : undefined} className={`${cls} ${active(n.href) ? "text-primary-container" : "text-on-surface-variant"}`}>{n.label}</Link>
-  );
-  // guest/forbidden = ยังใช้งานระบบไม่ได้ → ซ่อนเมนูทั้งหมด เหลือแต่ข้อความอธิบาย
-  const chromeless = state.status === "forbidden" || state.status === "guest";
+  if (can("admin:access")) nav.push({ label: "ผู้ดูแล", href: "/admin", icon: "settings" });
+
   return (
     <>
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:bg-white focus:p-3">ข้ามไปยังเนื้อหาหลัก</a>
-      <header className="sticky top-0 z-10 border-b border-surface-variant bg-surface-container-lowest shadow-sm">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between gap-4 px-4 md:px-12">
-          <Link href="/" className="font-display text-headline-md text-primary-container">CampusShare</Link>
-          {!chromeless && <nav aria-label="เมนูหลัก" className="hidden gap-6 text-label-md md:flex">{nav.map((n) => link(n, "py-2"))}</nav>}
-          <div className="flex items-center gap-2">
-            {user && (
-              <Link href="/notifications" aria-label={unread ? `การแจ้งเตือน ยังไม่อ่าน ${unread} รายการ` : "การแจ้งเตือน"} className="relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-on-surface-variant hover:bg-surface-variant/50">
-                <NotificationsIcon className="h-6 w-6" />
-                {unread > 0 && <span aria-hidden="true" className="absolute right-1 top-1 min-w-5 rounded-full bg-error px-1 text-center text-label-sm text-white">{unread > 99 ? "99+" : unread}</span>}
-              </Link>
-            )}
-            {can("listing:create") && <Link href="/listings/new" className={primaryButtonClass}>ลงของ</Link>}
-            {user && <span className="hidden max-w-48 truncate text-label-sm text-on-surface-variant lg:inline">{user.email}</span>}
-            {user && <div className="hidden md:block"><LogoutForm className={secondaryButtonClass} /></div>}
-            {state.status === "guest" && <a href={loginUrl(path)} className={primaryButtonClass}>เข้าสู่ระบบ</a>}
-          </div>
-        </div>
-      </header>
-      <main id="main" className="mx-auto max-w-[1280px] space-y-8 px-4 py-8 pb-24 md:px-12 md:pb-8">
-        {state.status === "forbidden" ? (
-          <EmptyState title="บัญชีนี้ไม่มีสิทธิ์เข้าใช้งานระบบนี้" hint="หากคิดว่าเป็นข้อผิดพลาด กรุณาติดต่อผู้ดูแลระบบ หรือออกจากระบบแล้วเข้าสู่ระบบด้วยบัญชีอื่น"><LogoutForm className={secondaryButtonClass} /></EmptyState>
-        ) : state.status === "guest" ? (
-          state.redirecting ? <LoadingState /> : (
-            <EmptyState title="ยังไม่ได้เข้าสู่ระบบ" hint="ระบบพยายามพาไปเข้าสู่ระบบแล้วแต่ยังไม่สำเร็จ อาจเป็นเพราะ Core Hub ไม่พร้อมใช้งานชั่วคราว">
-              <a href={loginUrl(path)} className={primaryButtonClass}>เข้าสู่ระบบอีกครั้ง</a>
-            </EmptyState>
-          )
-        ) : state.status === "error" ? <ErrorState error={state.error} onRetry={reload} /> : children}
-      </main>
-      {!chromeless && (
-        <nav aria-label="เมนูมือถือ" style={{ gridTemplateColumns: `repeat(${nav.length + (user ? 1 : 0)}, minmax(0, 1fr))` }} className="fixed inset-x-0 bottom-0 z-10 grid border-t border-surface-variant bg-surface-container-lowest pb-[env(safe-area-inset-bottom)] text-label-md md:hidden">
-          {nav.map((n) => link(n, "flex min-h-11 items-center justify-center py-3"))}
-          {user && <form method="POST" action="/auth/logout" className="contents"><button type="submit" className="flex min-h-11 items-center justify-center py-3 text-on-surface-variant">ออกจากระบบ</button></form>}
-        </nav>
-      )}
+      {/* shell ของกลางมี <main id="main"> แต่ไม่มีลิงก์ข้ามเนื้อหา — เติมจากฝั่งเราโดยไม่แตะของกลาง */}
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-40 focus:bg-white focus:p-3">ข้ามไปยังเนื้อหาหลัก</a>
+      <CsmjuAppShell
+        displayName={DISPLAY_NAME}
+        nav={nav}
+        primaryAction={can("listing:create") ? { label: "ลงของ", href: "/listings/new" } : undefined}
+        user={{ initials: initialsOf(state.user.email), roleLabel: ROLE_LABEL[state.user.subsystemRole] }}
+      >
+        {children}
+      </CsmjuAppShell>
     </>
   );
 }
+
 export function AppFrame({ children }: { children: React.ReactNode }) {
   return <MeProvider><NotificationsProvider><Frame>{children}</Frame></NotificationsProvider></MeProvider>;
 }
