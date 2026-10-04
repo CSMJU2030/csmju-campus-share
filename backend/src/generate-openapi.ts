@@ -11,7 +11,9 @@
  * จึงเติมค่า env หลอกให้ครบก่อน import AppModule (ค่าเหล่านี้ไม่ถูกใช้ยิงไปไหนทั้งสิ้น)
  */
 process.env.OPENAPI_GENERATE = '1';
-process.env.DATABASE_URL ||= 'postgresql://openapi:openapi@127.0.0.1:5432/openapi';
+// ไม่มีชื่อผู้ใช้และรหัสผ่านในสตริงนี้โดยตั้งใจ — SEC-01 จับ connection string ที่มีข้อมูลยืนยันตัวตนอยู่ด้วย
+// และค่านี้ไม่ได้ถูกใช้ต่อสายจริง (OPENAPI_GENERATE=1 ข้ามการตรวจ DB ใน PrismaService)
+process.env.DATABASE_URL ||= 'postgresql://127.0.0.1:5432/openapi';
 process.env.COREHUB_JWKS_URL ||= 'https://csmju2030.jowave.com/api/v1/.well-known/jwks.json';
 process.env.COREHUB_WEB_URL ||= 'https://csmju2030.jowave.com';
 process.env.SUBSYSTEM_NAME ||= 'csmju-campus-share';
