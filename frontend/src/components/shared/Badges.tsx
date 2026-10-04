@@ -1,24 +1,29 @@
+// ป้ายสถานะ = ห่อ <StatusBadge> ของกลาง (ui-design-system.md ข้อ 17.0) แล้วแมปค่า enum ของระบบนี้เป็น tone + ข้อความไทย
+// การแมปเป็นเรื่องเฉพาะของ CampusShare จึงอยู่ที่นี่ · สีและรูปทรงมาจากของกลางทั้งหมด ไม่เขียน class สีเองแล้ว
+import { StatusBadge as CsmjuStatusBadge, type StatusTone } from "@/csmju";
 import { LISTING_STATUS_LABEL, LISTING_TYPE_LABEL, REQUEST_STATUS_LABEL, label } from "@/lib/labels";
 
-type Tone = readonly [string, string];
-const grey: Tone = ["bg-surface-variant text-on-surface-variant", "bg-outline"];
-const green: Tone = ["bg-success/10 text-emerald-700", "bg-success"];
-const amber: Tone = ["bg-amber-100 text-amber-800", "bg-amber-500"];
-const blue: Tone = ["bg-primary-container/10 text-primary-container", "bg-primary-container"];
-const red: Tone = ["bg-error-container text-on-error-container", "bg-error"];
-
-const LISTING_TONE: Record<string, Tone> = {
-  AVAILABLE: green, PENDING: amber, BORROWED: blue, GIVEN_AWAY: blue, UNAVAILABLE: grey, ARCHIVED: grey,
+const LISTING_TONE: Record<string, StatusTone> = {
+  AVAILABLE: "success", PENDING: "warning", BORROWED: "info",
+  GIVEN_AWAY: "info", UNAVAILABLE: "neutral", ARCHIVED: "neutral",
 };
-const REQUEST_TONE: Record<string, Tone> = {
-  PENDING: amber, APPROVED: green, REJECTED: grey, RETURNED: blue, EXPIRED: grey, OVERDUE: red,
+const REQUEST_TONE: Record<string, StatusTone> = {
+  PENDING: "warning", APPROVED: "success", REJECTED: "neutral",
+  RETURNED: "info", EXPIRED: "neutral", OVERDUE: "error",
 };
 
-function Pill({ tone, text }: { tone: Tone; text: string }) {
-  return <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-label-sm ${tone[0]}`}><span aria-hidden="true" className={`h-2 w-2 rounded-full ${tone[1]}`} />{text}</span>;
-}
-export const StatusBadge = ({ status }: { status: string }) => <Pill tone={LISTING_TONE[status] ?? grey} text={label(LISTING_STATUS_LABEL, status)} />;
-export const RequestStatusBadge = ({ status }: { status: string }) => <Pill tone={REQUEST_TONE[status] ?? grey} text={label(REQUEST_STATUS_LABEL, status)} />;
+export const StatusBadge = ({ status }: { status: string }) => (
+  <CsmjuStatusBadge tone={LISTING_TONE[status] ?? "neutral"} label={label(LISTING_STATUS_LABEL, status)} />
+);
+export const RequestStatusBadge = ({ status }: { status: string }) => (
+  <CsmjuStatusBadge tone={REQUEST_TONE[status] ?? "neutral"} label={label(REQUEST_STATUS_LABEL, status)} />
+);
+
+// ประเภทการให้ (ยืม/ให้ต่อ) ไม่ใช่ "สถานะ" จึงไม่ใช้ StatusBadge ของกลาง — ใช้ token สีตรงๆ
 export function TypeBadge({ type }: { type: string }) {
-  return <span className="inline-flex rounded-full bg-primary-container/10 px-2.5 py-1 text-label-sm text-primary-container">{label(LISTING_TYPE_LABEL, type)}</span>;
+  return (
+    <span className="inline-flex whitespace-nowrap rounded-full bg-primary-container/10 px-2.5 py-1 text-label-sm text-primary-container">
+      {label(LISTING_TYPE_LABEL, type)}
+    </span>
+  );
 }

@@ -1,5 +1,4 @@
 name: csmju-campus-share
-standards_version: "1.0.0"
 conformance_level: L3
 
 # พอร์ตที่ผู้ดูแล dev server กำหนดให้ทีม (repo-structure.md: frontend 32xx · backend 42xx)
@@ -49,32 +48,24 @@ local_components:
   - name: FormField
     path: frontend/src/components/shared/FormField.tsx
     reason: "ข้อ 7.1/8.1 label+input+error ยังไม่มีใน @/csmju"
-  - name: ConfirmDialog
-    path: frontend/src/components/shared/ConfirmDialog.tsx
-    reason: "แทน Modal/ConfirmDeleteModal ของกลางที่ยังคัดลอกมาไม่ได้ (รอ template csmju-subsystem-web)"
-  - name: StatusBadge
-    path: frontend/src/components/shared/Badges.tsx
-    reason: "แทน StatusBadge ของกลางที่ยังคัดลอกมาไม่ได้ (รอ template csmju-subsystem-web)"
   - name: ListingCard
     path: frontend/src/components/shared/ListingCard.tsx
     reason: "การ์ดเฉพาะโดเมนของระบบนี้ ประกอบจาก cardClass + token"
   - name: AppFrame
     path: frontend/src/components/shared/AppFrame.tsx
-    reason: "ชั่วคราวแทน CsmjuAppShell (ข้อ 5.1 sidebar 256px) จนกว่าจะได้ template — U1 รอ PM"
+    reason: "ตัวต่อฝั่ง client ระหว่าง useMe()/useNotifications() กับ <CsmjuAppShell> ของกลาง — layout.tsx เป็น server component จึงเรียก can() ไม่ได้ · ไม่ได้แทนของกลาง"
 
 # ของกลางที่คัดลอกมาไว้ใน frontend/src/csmju/ (ห้ามแก้ · ข้อ 17.0)
 design_system:
-  source_repo: csmju-core-hub
+  source: standards/templates/csmju-subsystem-web   # มากับ submodule standards/ ผูกกับ .standards-version
   vendored_path: frontend/src/csmju
   files:
-    - frontend/src/csmju/ui.ts
-    - frontend/src/csmju/icons.tsx
+    - frontend/src/csmju/            # ทั้งโฟลเดอร์ คัดลอกทับทั้งชุด (ข้อ 17.0 ห้าม merge ทีละบรรทัด)
     - frontend/src/app/globals.css
+    - frontend/public/csmju-logo.png
   local_overrides:
-    - path: frontend/src/app/local-overrides.css
-      reason: "ข้อ 4.1 บรรทัด 413-414 สั่งให้ --font-display มี var(--font-noto-thai) ต่อท้าย แต่ต้นทางยังไม่แก้"
     - path: frontend/src/lib/ui.ts
-      reason: "ข้อ 7.2/6.1/12.1(5) สั่งให้ปุ่มมี focus-visible + disabled + min-h-11 แต่ต้นทางยังไม่มี"
+      reason: "ข้อ 7.2/6.1/12.1(5) สั่งให้ปุ่มมี focus-visible + disabled + min-h-11 แต่ ui.ts ของกลางยังไม่มี"
 
 owners:
   pl: "@csmju2030/pl-campus-share"
