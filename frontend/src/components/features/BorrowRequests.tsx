@@ -104,8 +104,8 @@ export function BorrowRequests() {
       </div>
       <div role="tabpanel" id="req-panel" aria-labelledby={`tab-${side}`} className="space-y-4">
         {rows.length === 0 ? (
-          <EmptyState title={side === "owner" ? "ยังไม่มีคำขอเข้ามา" : "คุณยังไม่ได้ส่งคำขอ"} hint={side === "owner" ? undefined : "เลือกของที่สนใจจากตลาดสิ่งของแล้วกดขอยืม"}>
-            {side === "requester" && <Link href="/" className={secondaryButtonClass}>ไปที่ตลาดสิ่งของ</Link>}
+          <EmptyState title={side === "owner" ? "ยังไม่มีคำขอเข้ามา" : "คุณยังไม่ได้ส่งคำขอ"} hint={side === "owner" ? undefined : "เลือกของที่สนใจจาก CampusShare แล้วกดขอยืม"}>
+            {side === "requester" && <Link href="/" className={secondaryButtonClass}>ไปที่ CampusShare</Link>}
           </EmptyState>
         ) : rows.map((r) => <RequestCard key={r.id} r={r} side={side} onChanged={q.reload} />)}
       </div>

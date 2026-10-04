@@ -55,7 +55,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 
   // icon เลือกได้เฉพาะ 10 ชื่อใน NavIconName ของ CsmjuAppShell — nav[0] คือ root ที่ shell เทียบแบบ exact
   const nav: NavItem[] = [
-    { label: "ตลาดสิ่งของ", href: "/", icon: "dashboard" },
+    { label: "CampusShare", href: "/", icon: "dashboard" },
     { label: "ของของฉัน", href: "/my-listings", icon: "menu-book" },
     { label: "คำขอ", href: "/borrow-requests", icon: "receipt" },
     // ปุ่มกระดิ่งของกลางยังไม่มี badge และยังไม่มีปลายทาง → ใส่จำนวนที่ยังไม่อ่านไว้ใน label ของเมนูแทน
