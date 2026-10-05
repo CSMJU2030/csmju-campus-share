@@ -25,7 +25,7 @@ function initialsOf(email: string): string {
   return (letters.slice(0, 2) || "??").toUpperCase();
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({ children, coreHubUrl }: { children: React.ReactNode; coreHubUrl?: string }) {
   const path = usePathname();
   const { state, can, reload } = useMe();
   const { unread } = useNotifications();
@@ -72,6 +72,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         nav={nav}
         primaryAction={can("listing:create") ? { label: "ลงของ", href: "/listings/new" } : undefined}
         user={{ initials: initialsOf(state.user.email), roleLabel: ROLE_LABEL[state.user.subsystemRole] }}
+        coreHubUrl={coreHubUrl}
       >
         {children}
       </CsmjuAppShell>
@@ -79,6 +80,14 @@ function Frame({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AppFrame({ children }: { children: React.ReactNode }) {
-  return <MeProvider><NotificationsProvider><Frame>{children}</Frame></NotificationsProvider></MeProvider>;
+/** coreHubUrl มาจาก layout.tsx เท่านั้น — env CORE_HUB_WEB_URL ไม่มีคำนำหน้า NEXT_PUBLIC_
+ *  จึงอ่านในไฟล์นี้ (client component) ไม่ได้ จะได้ undefined และปุ่มจะหายเงียบ ๆ */
+export function AppFrame({ children, coreHubUrl }: { children: React.ReactNode; coreHubUrl?: string }) {
+  return (
+    <MeProvider>
+      <NotificationsProvider>
+        <Frame coreHubUrl={coreHubUrl}>{children}</Frame>
+      </NotificationsProvider>
+    </MeProvider>
+  );
 }
