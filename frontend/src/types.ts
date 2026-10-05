@@ -24,7 +24,7 @@ export interface Me {
 export interface Listing {
   id: string; ownerCoreUserId: string; title: string; description: string | null;
   category: ListingCategory; listingType: ListingType; status: ListingStatus;
-  department: string | null; lastActivityAt: string; createdAt: string; updatedAt: string;
+  departmentCode: string; lastActivityAt: string; createdAt: string; updatedAt: string;
 }
 export interface BorrowRequest {
   id: string; listingId: string; requesterCoreUserId: string; message: string | null; responseMessage: string | null;

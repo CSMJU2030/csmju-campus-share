@@ -38,7 +38,7 @@ export function ListingDetail({ id }: { id: string }) {
   }
   const rows: [string, string][] = [
     ["หมวดหมู่", label(CATEGORY_LABEL, x.category)], ["สถานะ", label(LISTING_STATUS_LABEL, x.status)],
-    ["หน่วยงาน/สาขา", x.department ?? "-"], ["เจ้าของ", isOwner ? "คุณ" : "เจ้าของ"],
+    ["เจ้าของ", isOwner ? "คุณ" : "เจ้าของ"],
     ["ลงเมื่อ", formatDate(x.createdAt)], ["เคลื่อนไหวล่าสุด", formatDate(x.lastActivityAt)],
   ];
   return (

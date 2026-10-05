@@ -3,6 +3,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import 'dotenv/config';
 
+// code ของสาขาที่ระบบให้บริการ — ตรงกับ DEPARTMENT_CODE ใน .env ของ backend
+// ฐานไม่มี default แล้ว (migration 20261005190000) จึงต้องระบุทุกครั้งที่สร้าง
+const DEPARTMENT_CODE = process.env.DEPARTMENT_CODE ?? 'CS';
+
 const connectionString = process.env.DATABASE_URL;
 const pool = new Pool({ connectionString });
 const adapter = new PrismaPg(pool);
@@ -32,6 +36,7 @@ async function main() {
   const hdmiCable = await prisma.listing.create({
     data: {
       ownerCoreUserId: USERS.owner1,
+      departmentCode: DEPARTMENT_CODE,
       title: 'สาย HDMI 2 เมตร',
       description: 'ใช้ต่อโปรเจกเตอร์ สภาพดี',
       category: 'CABLES_CONNECTORS',
@@ -43,6 +48,7 @@ async function main() {
   const dataStructureBook = await prisma.listing.create({
     data: {
       ownerCoreUserId: USERS.owner1,
+      departmentCode: DEPARTMENT_CODE,
       title: 'หนังสือ Data Structures and Algorithms',
       description: 'ฉบับพิมพ์ล่าสุด มีรอยขีดเส้นใต้บ้าง',
       category: 'BOOKS_MATERIALS',
@@ -54,6 +60,7 @@ async function main() {
   const tripod = await prisma.listing.create({
     data: {
       ownerCoreUserId: USERS.owner2,
+      departmentCode: DEPARTMENT_CODE,
       title: 'ขาตั้งกล้อง Tripod',
       category: 'CAMERA_PHOTOGRAPHY',
       listingType: 'BORROW',
@@ -64,6 +71,7 @@ async function main() {
   const oldCalculator = await prisma.listing.create({
     data: {
       ownerCoreUserId: USERS.owner2,
+      departmentCode: DEPARTMENT_CODE,
       title: 'เครื่องคิดเลข Casio fx-991',
       description: 'ไม่ใช้แล้ว ยกให้รุ่นน้องที่ต้องการ',
       category: 'CALCULATORS',
@@ -131,6 +139,7 @@ async function main() {
   const givenAwayPen = await prisma.listing.create({
     data: {
       ownerCoreUserId: USERS.owner1,
+      departmentCode: DEPARTMENT_CODE,
       title: 'ปากกาเขียนไวท์บอร์ด (ยกให้)',
       description: 'เหลือจากกิจกรรม ยกให้รุ่นน้อง',
       category: 'CLUB_ACTIVITY_GEAR',
@@ -151,7 +160,7 @@ async function main() {
   console.log('Seed เสร็จแล้ว:');
   console.log(`  Listings: ${hdmiCable.id}, ${dataStructureBook.id}, ${tripod.id}, ${oldCalculator.id}, ${givenAwayPen.id}`);
   console.log('  ต้องมี token จาก Core Hub ทุก endpoint ใต้ /api/v1 (ไม่มี public endpoint แล้ว)');
-  console.log('  ลอง: curl -H "Authorization: Bearer <token>" http://localhost:3002/api/v1/listings');
+  console.log('  ลอง: curl -H "Authorization: Bearer <token>" http://localhost:3205/api/v1/listings');
 }
 
 main()

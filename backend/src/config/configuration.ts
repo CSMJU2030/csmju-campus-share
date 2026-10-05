@@ -11,6 +11,9 @@ export default () => ({
   },
   subsystem: {
     name: process.env.SUBSYSTEM_NAME ?? 'csmju-campus-share',
+    // code ของสาขาที่ระบบนี้ให้บริการ (reference-data.md ข้อ 4: ^[A-Z0-9-]+$)
+    // ห้ามเขียนค่าตายในโค้ด — DD-04 · ค่า CS มาจาก reference-data.md ข้อ 9
+    departmentCode: process.env.DEPARTMENT_CODE ?? 'CS',
   },
   app: {
     // origin ที่เบราว์เซอร์เห็นจริง = frontend ที่ proxy /api, /auth, /health ไป backend

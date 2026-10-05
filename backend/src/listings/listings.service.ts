@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
@@ -6,23 +7,27 @@ import { QueryListingsDto } from './dto/query-listings.dto';
 import { conflict, forbidden, notFound, validationError } from '../common/exceptions/app.exception';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
 
-// TODO(department): Core Hub v1.0 ยังไม่ส่ง department (data-dictionary.md ข้อ 1.3)
-// hardcode ไว้จุดเดียว ถ้าได้ field จริงจาก JWT แก้แค่บรรทัดนี้
-const CURRENT_DEPARTMENT = 'computer-science';
-
 // สถานะที่เจ้าของสลับเองได้ (ทั้งต้นทางและปลายทาง)
 const OWNER_TOGGLEABLE = ['AVAILABLE', 'UNAVAILABLE'] as const;
 
 @Injectable()
 export class ListingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  /** code ของสาขาที่ระบบให้บริการ — มาจาก env ไม่ใช่ค่าตายในโค้ด (DD-04) */
+  private readonly departmentCode: string;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    config: ConfigService,
+  ) {
+    this.departmentCode = config.get<string>('subsystem.departmentCode', 'CS');
+  }
 
   async findMany(query: QueryListingsDto) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
 
     const where = {
-      department: CURRENT_DEPARTMENT,
+      departmentCode: this.departmentCode,
       ...(query.category && { category: query.category }),
       ...(query.listingType && { listingType: query.listingType }),
       ...(query.status && { status: query.status }),
@@ -49,7 +54,7 @@ export class ListingsService {
 
   async findOne(id: string) {
     const listing = await this.prisma.listing.findUnique({ where: { id } });
-    if (!listing || listing.department !== CURRENT_DEPARTMENT) {
+    if (!listing || listing.departmentCode !== this.departmentCode) {
       throw notFound('ไม่พบรายการของนี้');
     }
     return { data: listing };
@@ -63,7 +68,7 @@ export class ListingsService {
         description: dto.description,
         category: dto.category,
         listingType: dto.listingType,
-        department: CURRENT_DEPARTMENT,
+        departmentCode: this.departmentCode,
       },
     });
     return { data: listing };
@@ -71,7 +76,7 @@ export class ListingsService {
 
   async updateStatus(id: string, dto: UpdateListingStatusDto, user: CoreHubIdentity) {
     const listing = await this.prisma.listing.findUnique({ where: { id } });
-    if (!listing || listing.department !== CURRENT_DEPARTMENT) {
+    if (!listing || listing.departmentCode !== this.departmentCode) {
       throw notFound('ไม่พบรายการของนี้');
     }
     if (listing.ownerCoreUserId !== user.coreUserId) {

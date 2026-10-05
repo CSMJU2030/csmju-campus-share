@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { CreateBorrowRequestDto } from './dto/create-borrow-request.dto';
@@ -8,7 +9,6 @@ import { CoreHubIdentity } from '../auth/core-hub-identity';
 
 // นโยบาย fail-safe — ระบบต้องอยู่รอดได้แม้ไม่มี Admin เฝ้า
 const PENDING_EXPIRE_DAYS = 3;
-const CURRENT_DEPARTMENT = 'computer-science';
 
 /** แถวที่ได้จาก UPDATE ... RETURNING ของงานตั้งเวลา */
 interface AffectedRequestRow {
@@ -20,14 +20,20 @@ interface AffectedRequestRow {
 
 @Injectable()
 export class BorrowRequestsService {
+  /** code ของสาขาที่ระบบให้บริการ — มาจาก env ไม่ใช่ค่าตายในโค้ด (DD-04) */
+  private readonly departmentCode: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.departmentCode = config.get<string>('subsystem.departmentCode', 'CS');
+  }
 
   async create(dto: CreateBorrowRequestDto, user: CoreHubIdentity) {
     const listing = await this.prisma.listing.findUnique({ where: { id: dto.listingId } });
-    if (!listing || listing.department !== CURRENT_DEPARTMENT) throw notFound('ไม่พบรายการของนี้');
+    if (!listing || listing.departmentCode !== this.departmentCode) throw notFound('ไม่พบรายการของนี้');
 
     const requesterCoreUserId = user.coreUserId;
     if (listing.ownerCoreUserId === requesterCoreUserId) {

@@ -76,8 +76,9 @@ model Listing {
   listingType     ListingType     @map("listing_type")
   status          ListingStatus   @default(AVAILABLE)
 
-  // เตรียมรองรับ multi-department ในอนาคต — ตอนนี้ hardcode "computer-science" ที่ชั้น service
-  department String @default("computer-science")
+  // ReferenceCode ตาม data-dictionary.md ข้อ 3 — เก็บ code อย่างเดียว ชื่อคอลัมน์ <ชุด>_code
+  // ค่ามาจาก env DEPARTMENT_CODE ที่ชั้น service ไม่มี default ในฐานเพื่อไม่ให้มีแหล่งความจริงสองทาง
+  departmentCode String @map("department_code")
 
   lastActivityAt DateTime @default(now()) @map("last_activity_at") // ใช้เช็ค auto-archive
 

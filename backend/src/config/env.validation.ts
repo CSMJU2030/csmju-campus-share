@@ -17,6 +17,12 @@ const schema = z
     // ต้องตรงกับ name ใน subsystem.yaml เป๊ะ (api-conventions.md v1.1 ข้อ 8)
     SUBSYSTEM_NAME: z.string().min(1),
 
+    // code ของสาขาที่ระบบให้บริการ — รูปแบบตาม reference-data.md ข้อ 4
+    DEPARTMENT_CODE: z
+      .string()
+      .regex(/^[A-Z0-9-]+$/, 'ต้องเป็นตัวพิมพ์ใหญ่ ตัวเลข หรือขีดกลางเท่านั้น')
+      .default('CS'),
+
     // origin ที่เบราว์เซอร์เห็น (frontend) — ต้องตรงกับ base_url ใน subsystem.yaml
     // และตรงกับ callback_url ที่ลงทะเบียนกับ Core Hub
     PUBLIC_ORIGIN: z.string().url(),
