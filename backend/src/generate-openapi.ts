@@ -19,7 +19,8 @@ process.env.COREHUB_WEB_URL ||= 'https://csmju2030.jowave.com';
 process.env.SUBSYSTEM_NAME ||= 'csmju-campus-share';
 process.env.PUBLIC_ORIGIN ||= 'http://localhost:3205';
 
-/* eslint-disable import/first */
+// import อยู่หลังการตั้ง process.env ข้างบนโดยตั้งใจ — AppModule อ่าน env ตอนถูก import
+// จึงต้องตั้งค่าให้ครบก่อน (ESLint ของเราไม่ได้เปิดกฎ import/first จึงไม่ต้องปิดกฎใด)
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { writeFileSync } from 'node:fs';

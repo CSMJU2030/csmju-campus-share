@@ -16,7 +16,8 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:cron": "ts-node src/dev/test-cron.ts",
-    "generate:openapi": "ts-node src/generate-openapi.ts"
+    "generate:openapi": "ts-node src/generate-openapi.ts",
+    "lint": "eslint ."
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -48,11 +49,13 @@
     "@types/pg": "^8.11.10",
     "@types/supertest": "^6.0.2",
     "dotenv": "^18.0.3",
+    "eslint": "^9.0.0",
     "jest": "^30.0.0",
     "prisma": "7.9.1",
     "supertest": "^7.0.0",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.0.0"
   }
 }

@@ -57,7 +57,7 @@ export function ListingDetail({ id }: { id: string }) {
               onClick={() => run(() => api.setListingStatus(id, toggleTo), toggleTo === "UNAVAILABLE" ? "ปิดชั่วคราวแล้ว" : "เปิดให้ขออีกครั้งแล้ว")}>
               {toggleTo === "UNAVAILABLE" ? "ปิดชั่วคราว" : "เปิดใหม่"}
             </button>
-          ) : <p className="text-body-md text-on-surface-variant">สถานะนี้ระบบเปลี่ยนให้ตามคำขอ จึงตั้งค่าเองไม่ได้ (จัดการคำขอได้ที่เมนู "คำขอ")</p>}
+          ) : <p className="text-body-md text-on-surface-variant">สถานะนี้ระบบเปลี่ยนให้ตามคำขอ จึงตั้งค่าเองไม่ได้ (จัดการคำขอได้ที่เมนู “คำขอ”)</p>}
         </div>
       ) : canRequest && x.status === "AVAILABLE" ? (
         <div className="max-w-prose space-y-4">
