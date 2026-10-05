@@ -98,9 +98,9 @@ export class ListingsService {
       data: { status: dto.status, lastActivityAt: new Date() },
     });
     if (updated.count === 0) {
-      throw conflict('สถานะปัจจุบันของรายการนี้เปลี่ยนเองไม่ได้ ระบบจัดการให้ตามคำขอยืม', {
-        currentStatus: listing.status,
-      });
+      throw conflict('สถานะปัจจุบันของรายการนี้เปลี่ยนเองไม่ได้ ระบบจัดการให้ตามคำขอยืม', [
+        `currentStatus=${listing.status}`,
+      ]);
     }
 
     return { data: await this.prisma.listing.findUniqueOrThrow({ where: { id } }) };

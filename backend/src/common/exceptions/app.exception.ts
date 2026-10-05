@@ -27,14 +27,15 @@ const STATUS_MAP: Record<ErrorCode, number> = {
 
 export class AppException extends HttpException {
   public readonly code: ErrorCode;
-  public readonly details?: string[] | Record<string, unknown>;
+  /** schemas/common.schema.json บังคับ array ของ string เท่านั้น ห้ามเป็น object */
+  public readonly details?: string[];
   /** 429 และ 503 ต้องมี header Retry-After เป็นวินาที (api-conventions.md ข้อ 4) */
   public readonly retryAfterSec?: number;
 
   constructor(
     code: ErrorCode,
     message: string,
-    details?: string[] | Record<string, unknown>,
+    details?: string[],
     retryAfterSec?: number,
   ) {
     super(message, STATUS_MAP[code]);
@@ -60,7 +61,8 @@ export const notFound = (message = 'ไม่พบข้อมูลที่�
 export const validationError = (message: string, details: string[]) =>
   new AppException('VALIDATION_ERROR', message, details);
 
-export const conflict = (message: string, details?: Record<string, unknown>) =>
+// details เป็น key=value แบบข้อความ เพื่อให้ยังสืบย้อนได้โดยไม่ผิด schema
+export const conflict = (message: string, details?: string[]) =>
   new AppException('CONFLICT', message, details);
 
 export const tooManyRequests = (message = 'เรียกถี่เกินไป กรุณารอสักครู่', retryAfterSec = 60) =>

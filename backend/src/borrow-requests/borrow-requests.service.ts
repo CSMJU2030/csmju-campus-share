@@ -40,7 +40,7 @@ export class BorrowRequestsService {
       throw forbidden('ไม่สามารถขอยืมของของตัวเองได้');
     }
     if (listing.status !== 'AVAILABLE') {
-      throw conflict('ของชิ้นนี้ไม่ว่างให้ยืมในตอนนี้', { listingStatus: listing.status });
+      throw conflict('ของชิ้นนี้ไม่ว่างให้ยืมในตอนนี้', [`listingStatus=${listing.status}`]);
     }
 
     // จอง listing ก่อนสร้างคำขอ ภายใน transaction เดียว — สองคนกดพร้อมกันจะมีคนเดียวที่ผ่าน
@@ -50,7 +50,7 @@ export class BorrowRequestsService {
         data: { status: 'PENDING', lastActivityAt: new Date() },
       });
       if (claimed.count === 0) {
-        throw conflict('ของชิ้นนี้เพิ่งถูกคนอื่นขอไปก่อนหน้าคุณ', { listingStatus: 'PENDING' });
+        throw conflict('ของชิ้นนี้เพิ่งถูกคนอื่นขอไปก่อนหน้าคุณ', ['listingStatus=PENDING']);
       }
       return tx.borrowRequest.create({
         data: {
@@ -116,7 +116,7 @@ export class BorrowRequestsService {
       throw forbidden('เฉพาะเจ้าของของเท่านั้นที่อนุมัติ/ปฏิเสธคำขอได้');
     }
     if (request.status !== 'PENDING') {
-      throw conflict('คำขอนี้ถูกตอบกลับไปแล้ว หรือหมดอายุแล้ว', { currentStatus: request.status });
+      throw conflict('คำขอนี้ถูกตอบกลับไปแล้ว หรือหมดอายุแล้ว', [`currentStatus=${request.status}`]);
     }
 
     const isApproved = dto.status === 'APPROVED';
@@ -148,7 +148,7 @@ export class BorrowRequestsService {
         },
       });
       if (changed.count === 0) {
-        throw conflict('คำขอนี้เพิ่งถูกตอบกลับไปแล้ว', { currentStatus: request.status });
+        throw conflict('คำขอนี้เพิ่งถูกตอบกลับไปแล้ว', [`currentStatus=${request.status}`]);
       }
 
       await tx.listing.updateMany({
@@ -179,7 +179,7 @@ export class BorrowRequestsService {
   ) {
     // GIVEAWAY ไม่มีวงจรคืน — จบที่การส่งมอบตามขอบเขตที่ตัดสินไว้
     if (request.listing.listingType === 'GIVEAWAY') {
-      throw conflict('รายการให้ต่อไม่มีการคืน จบที่การส่งมอบแล้ว', { listingType: 'GIVEAWAY' });
+      throw conflict('รายการให้ต่อไม่มีการคืน จบที่การส่งมอบแล้ว', ['listingType=GIVEAWAY']);
     }
 
     const coreUserId = user.coreUserId;
@@ -189,7 +189,7 @@ export class BorrowRequestsService {
     if (!isParty) throw forbidden('ไม่ใช่คู่กรณีของคำขอยืมนี้');
 
     if (request.status !== 'APPROVED' && request.status !== 'OVERDUE') {
-      throw conflict('คำขอนี้ยังไม่อยู่ในสถานะที่คืนได้', { currentStatus: request.status });
+      throw conflict('คำขอนี้ยังไม่อยู่ในสถานะที่คืนได้', [`currentStatus=${request.status}`]);
     }
 
     return {
@@ -199,7 +199,7 @@ export class BorrowRequestsService {
           data: { status: 'RETURNED', returnedAt: new Date() },
         });
         if (changed.count === 0) {
-          throw conflict('คำขอนี้เพิ่งถูกแจ้งคืนไปแล้ว', { currentStatus: request.status });
+          throw conflict('คำขอนี้เพิ่งถูกแจ้งคืนไปแล้ว', [`currentStatus=${request.status}`]);
         }
         await tx.listing.updateMany({
           where: { id: request.listing.id, status: 'BORROWED' },
