@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 import { notFound } from '../common/exceptions/app.exception';
+import { PaginationQueryDto, pageArgs, pageMeta } from '../common/dto/pagination-query.dto';
 
 interface CreateNotificationInput {
   recipientCoreUserId: string;
@@ -41,12 +42,17 @@ export class NotificationsService {
     return notification;
   }
 
-  async findForUser(coreUserId: string) {
-    return this.prisma.notification.findMany({
-      where: { recipientCoreUserId: coreUserId },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    });
+  /** collection ต้องมี meta เสมอ (api-conventions.md ข้อ 3) */
+  async findForUser(coreUserId: string, query: PaginationQueryDto) {
+    const { page, limit, skip, take } = pageArgs(query);
+    const where = { recipientCoreUserId: coreUserId };
+
+    const [items, total] = await Promise.all([
+      this.prisma.notification.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.notification.count({ where }),
+    ]);
+
+    return { data: items, meta: pageMeta(total, page, limit) };
   }
 
   /** ไม่เจอ หรือไม่ใช่ของผู้เรียก -> 404 (เดิม no-op เงียบๆ ทำให้บักซ่อนตัว) */

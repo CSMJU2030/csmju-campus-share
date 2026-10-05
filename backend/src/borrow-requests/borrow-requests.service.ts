@@ -6,6 +6,7 @@ import { CreateBorrowRequestDto } from './dto/create-borrow-request.dto';
 import { UpdateBorrowRequestStatusDto } from './dto/update-borrow-request-status.dto';
 import { conflict, forbidden, notFound, validationError } from '../common/exceptions/app.exception';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
+import { PaginationQueryDto, pageArgs, pageMeta } from '../common/dto/pagination-query.dto';
 
 // นโยบาย fail-safe — ระบบต้องอยู่รอดได้แม้ไม่มี Admin เฝ้า
 const PENDING_EXPIRE_DAYS = 3;
@@ -75,23 +76,31 @@ export class BorrowRequestsService {
     return { data: request };
   }
 
-  async findMine(user: CoreHubIdentity) {
+  /**
+   * คำขอทั้งหมดที่ผู้ใช้เกี่ยวข้อง — ทั้งที่ตัวเองขอ และที่เข้ามาหาของของตัวเอง
+   * api-conventions.md ข้อ 3: collection ต้องเป็น data[] + meta ห้ามห่อเป็น object
+   * หน้าเว็บแยกสองฝั่งเองได้จาก requesterCoreUserId เทียบกับ id ของผู้ใช้
+   * (ขอยืมของตัวเองไม่ได้อยู่แล้ว การแยกจึงไม่กำกวม)
+   */
+  async findMine(user: CoreHubIdentity, query: PaginationQueryDto) {
     const coreUserId = user.coreUserId;
+    const { page, limit, skip, take } = pageArgs(query);
+    const where = {
+      OR: [{ requesterCoreUserId: coreUserId }, { listing: { ownerCoreUserId: coreUserId } }],
+    };
 
-    const [asRequester, asOwner] = await Promise.all([
+    const [items, total] = await Promise.all([
       this.prisma.borrowRequest.findMany({
-        where: { requesterCoreUserId: coreUserId },
+        where,
         include: { listing: true },
         orderBy: { createdAt: 'desc' },
+        skip,
+        take,
       }),
-      this.prisma.borrowRequest.findMany({
-        where: { listing: { ownerCoreUserId: coreUserId } },
-        include: { listing: true },
-        orderBy: { createdAt: 'desc' },
-      }),
+      this.prisma.borrowRequest.count({ where }),
     ]);
-    // api-conventions.md ข้อ 6: field ใน JSON เป็น camelCase
-    return { data: { asRequester, asOwner } };
+
+    return { data: items, meta: pageMeta(total, page, limit) };
   }
 
   async updateStatus(id: string, dto: UpdateBorrowRequestStatusDto, user: CoreHubIdentity) {

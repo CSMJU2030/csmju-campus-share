@@ -31,7 +31,6 @@ export interface BorrowRequest {
   status: RequestStatus; requestedAt: string; respondedAt: string | null; dueDate: string | null; returnedAt: string | null;
   createdAt: string; listing?: Listing;
 }
-export interface MineRequests { asRequester: BorrowRequest[]; asOwner: BorrowRequest[] }
 export interface Notification {
   id: string; recipientCoreUserId: string; type: NotificationType; title: string; body: string | null;
   refListingId: string | null; refRequestId: string | null; isRead: boolean; createdAt: string;

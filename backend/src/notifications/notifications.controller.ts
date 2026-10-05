@@ -1,4 +1,5 @@
-import { Controller, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Patch, Query } from '@nestjs/common';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { NotificationsService } from './notifications.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
@@ -12,8 +13,8 @@ export class NotificationsController {
 
   @RequirePermissions(Permission.NOTIFICATION_READ_OWN)
   @Get()
-  async findMine(@CurrentUser() user: CoreHubIdentity) {
-    return { data: await this.notificationsService.findForUser(user.coreUserId) };
+  findMine(@CurrentUser() user: CoreHubIdentity, @Query() query: PaginationQueryDto) {
+    return this.notificationsService.findForUser(user.coreUserId, query);
   }
 
   @RequirePermissions(Permission.NOTIFICATION_UPDATE_OWN)

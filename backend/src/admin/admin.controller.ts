@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Query } from '@nestjs/common';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import { AdminService } from './admin.service';
 import { ResolveReportDto } from './dto/resolve-report.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -18,8 +19,8 @@ export class AdminController {
   }
 
   @Get('reports')
-  getOpenReports() {
-    return this.adminService.getOpenReports();
+  getOpenReports(@Query() query: PaginationQueryDto) {
+    return this.adminService.getOpenReports(query);
   }
 
   @Patch('reports/:id')
@@ -32,7 +33,7 @@ export class AdminController {
   }
 
   @Get('overdue-requests')
-  getOverdueRequests() {
-    return this.adminService.getOverdueRequests();
+  getOverdueRequests(@Query() query: PaginationQueryDto) {
+    return this.adminService.getOverdueRequests(query);
   }
 }

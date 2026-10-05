@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { conflict, notFound } from '../common/exceptions/app.exception';
 import { ResolveReportDto } from './dto/resolve-report.dto';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
+import { PaginationQueryDto, pageArgs, pageMeta } from '../common/dto/pagination-query.dto';
 
 @Injectable()
 export class AdminService {
@@ -49,12 +50,21 @@ export class AdminService {
   }
 
   // ตรวจสอบรายการที่มีปัญหา — เฉพาะที่ถูก flag เท่านั้น (ไม่ต้องไล่ดูทุกรายการ)
-  async getOpenReports() {
-    const reports = await this.prisma.report.findMany({
-      where: { status: 'OPEN' },
-      orderBy: { createdAt: 'asc' }, // เก่าสุดก่อน กันเรื่องค้างนาน
-    });
-    return { data: reports };
+  async getOpenReports(query: PaginationQueryDto) {
+    const { page, limit, skip, take } = pageArgs(query);
+    const where = { status: 'OPEN' as const };
+
+    const [reports, total] = await Promise.all([
+      this.prisma.report.findMany({
+        where,
+        orderBy: { createdAt: 'asc' }, // เก่าสุดก่อน กันเรื่องค้างนาน
+        skip,
+        take,
+      }),
+      this.prisma.report.count({ where }),
+    ]);
+
+    return { data: reports, meta: pageMeta(total, page, limit) };
   }
 
   async resolveReport(id: string, dto: ResolveReportDto, admin: CoreHubIdentity) {
@@ -77,12 +87,21 @@ export class AdminService {
   }
 
   // รายการที่ระบบ auto-flag ว่าเกินกำหนดคืน (จาก cron job) — ให้ Admin เห็นทันทีไม่ต้องไล่เช็คเอง
-  async getOverdueRequests() {
-    const requests = await this.prisma.borrowRequest.findMany({
-      where: { status: 'OVERDUE' },
-      include: { listing: true },
-      orderBy: { dueDate: 'asc' }, // ค้างนานสุดก่อน
-    });
-    return { data: requests };
+  async getOverdueRequests(query: PaginationQueryDto) {
+    const { page, limit, skip, take } = pageArgs(query);
+    const where = { status: 'OVERDUE' as const };
+
+    const [requests, total] = await Promise.all([
+      this.prisma.borrowRequest.findMany({
+        where,
+        include: { listing: true },
+        orderBy: { dueDate: 'asc' }, // ค้างนานสุดก่อน
+        skip,
+        take,
+      }),
+      this.prisma.borrowRequest.count({ where }),
+    ]);
+
+    return { data: requests, meta: pageMeta(total, page, limit) };
   }
 }

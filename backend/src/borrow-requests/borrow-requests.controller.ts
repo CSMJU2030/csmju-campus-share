@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { BorrowRequestsService } from './borrow-requests.service';
 import { CreateBorrowRequestDto } from './dto/create-borrow-request.dto';
 import { UpdateBorrowRequestStatusDto } from './dto/update-borrow-request-status.dto';
@@ -6,6 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
 import { RequirePermissions } from '../auth/decorators/require-permissions.decorator';
 import { Permission } from '../auth/permissions';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 
 @Controller('v1/borrow-requests')
 export class BorrowRequestsController {
@@ -19,8 +20,8 @@ export class BorrowRequestsController {
 
   @RequirePermissions(Permission.BORROW_REQUEST_READ_OWN)
   @Get('mine')
-  findMine(@CurrentUser() user: CoreHubIdentity) {
-    return this.borrowRequestsService.findMine(user);
+  findMine(@CurrentUser() user: CoreHubIdentity, @Query() query: PaginationQueryDto) {
+    return this.borrowRequestsService.findMine(user, query);
   }
 
   @RequirePermissions(Permission.BORROW_REQUEST_UPDATE_OWN)

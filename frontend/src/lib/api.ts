@@ -3,7 +3,7 @@
 // - จัดการ casing ที่นี่: body ของ listings/borrow-requests = snake_case, reports = camelCase, query = camelCase
 import type {
   AdminStats, BorrowRequest, Envelope, ErrorCode, Listing, ListingCategory, ListingStatus, ListingType, Me, Meta,
-  MineRequests, Notification, Report, ReportTargetType,
+  Notification, Report, ReportTargetType,
 } from "@/types";
 
 export class ApiError extends Error {
@@ -128,15 +128,16 @@ export const api = {
   // Borrow requests
   createBorrowRequest: (listingId: string, message?: string) =>
     get<BorrowRequest>("/borrow-requests", { method: "POST", body: { listingId, message: message?.trim() || undefined } }),
-  myBorrowRequests: () => get<MineRequests>("/borrow-requests/mine"),
+  /** คืน array เดียวทั้งที่เราขอและที่เข้ามาหาของเรา — หน้าเว็บแยกสองฝั่งเองจาก requesterCoreUserId */
+  myBorrowRequests: () => get<BorrowRequest[]>("/borrow-requests/mine", { query: { limit: 100 } }),
   respondBorrowRequest: (id: string, i: RespondInput) =>
     get<BorrowRequest>(`/borrow-requests/${encodeURIComponent(id)}`, {
       method: "PATCH", body: { status: i.status, responseMessage: i.responseMessage?.trim() || undefined, dueDate: i.dueDate || undefined },
     }),
 
-  // Notifications (ไม่มี pagination / นับ unread ฝั่ง client)
+  // Notifications — ขอ limit สูงสุดเพื่อให้ตัวเลข unread ที่นับฝั่ง client ครบ
   // guest: true = เป็นการเรียกเบื้องหลัง ไม่บังคับ redirect ไป login ระหว่างอยู่หน้าสาธารณะ
-  notifications: () => get<Notification[]>("/notifications", { guest: true }),
+  notifications: () => get<Notification[]>("/notifications", { guest: true, query: { limit: 100 } }),
   markNotificationRead: (id: string) => get<{ id: string; isRead: true }>(`/notifications/${encodeURIComponent(id)}`, { method: "PATCH" }),
 
   // Reports (body เป็น camelCase)
@@ -144,7 +145,7 @@ export const api = {
 
   // Admin (STAFF/ADMIN)
   adminStats: () => get<AdminStats>("/admin/stats"),
-  adminReports: () => get<Report[]>("/admin/reports"),
+  adminReports: () => get<Report[]>("/admin/reports", { query: { limit: 100 } }),
   resolveReport: (id: string, note?: string) => get<Report>(`/admin/reports/${encodeURIComponent(id)}`, { method: "PATCH", body: { note: note?.trim() || undefined } }),
-  adminOverdue: () => get<BorrowRequest[]>("/admin/overdue-requests"),
+  adminOverdue: () => get<BorrowRequest[]>("/admin/overdue-requests", { query: { limit: 100 } }),
 };

@@ -87,11 +87,15 @@ export function RequestCard({ r, side, actions = true, onChanged }: { r: BorrowR
 export function BorrowRequests() {
   const params = useSearchParams();
   const [side, setSide] = useState<Side>(params.get("tab") === "owner" ? "owner" : "requester");
+  const { user } = useMe();
   const q = useAsync(() => api.myBorrowRequests(), []);
   if (q.loading && !q.data) return <LoadingState />;
   if (q.error || !q.data) return <ErrorState error={q.error ?? toApiError(null)} onRetry={q.reload} />;
 
-  const tabs: [Side, string, BorrowRequest[]][] = [["requester", "คำขอของฉัน", q.data.asRequester], ["owner", "คำขอที่เข้ามา", q.data.asOwner]];
+  // backend คืน array เดียว (api-conventions ข้อ 3) — แยกฝั่งที่นี่จาก id ของผู้ใช้
+  const mine = q.data.filter((r) => r.requesterCoreUserId === user?.id);
+  const incoming = q.data.filter((r) => r.requesterCoreUserId !== user?.id);
+  const tabs: [Side, string, BorrowRequest[]][] = [["requester", "คำขอของฉัน", mine], ["owner", "คำขอที่เข้ามา", incoming]];
   const rows = tabs.find((t) => t[0] === side)![2];
   return (
     <>
