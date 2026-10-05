@@ -1,5 +1,6 @@
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * pagination มาตรฐานของทุก collection endpoint
@@ -8,12 +9,14 @@ import { Type } from 'class-transformer';
  * ทุกที่ใน backend/src รวมถึงในคอมเมนต์ จึงไม่เขียนคำนั้นลงไฟล์นี้
  */
 export class PaginationQueryDto {
+  @ApiPropertyOptional({ minimum: 1, default: 1, description: 'หน้าที่ต้องการ เริ่มที่ 1' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number = 1;
 
+  @ApiPropertyOptional({ minimum: 1, maximum: 100, default: 20, description: 'จำนวนต่อหน้า สูงสุด 100' })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
