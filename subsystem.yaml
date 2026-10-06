@@ -1,31 +1,71 @@
-# manifest ของระบบย่อย — CI และ conformance อ่านไฟล์นี้ไฟล์เดียว
-# schema: standards/schemas/subsystem.schema.json
+name: csmju-campus-share
+conformance_level: L3
 
-name: csmju-campus-share          # ต้องตรงกับทะเบียนใน Core Hub และกับ data.service ของ /api/health
-standards_version: "1.0.0"
-conformance_level: L3                 # L1 · L2 · L3 (ระบบที่มี UI ต้องถึง L3)
+# พอร์ตที่ผู้ดูแล dev server กำหนดให้ทีม (repo-structure.md: frontend 32xx · backend 42xx)
+# frontend เป็นประตูเดียว proxy /api/* และ /auth/* ไป backend :4205
+# callback ที่ลงทะเบียนจึงใช้พอร์ต frontend เสมอ (connect-core-hub.md ข้อ 3)
+base_url: http://localhost:3205
+core_hub_url: https://csmju2030.jowave.com
+core_hub_web_url: https://csmju2030.jowave.com   # Core Hub ตัวจริง (connect-core-hub.md)
+callback_path: /auth/callback
 
-base_url: http://localhost:3002       # URL ของระบบย่อยตอนรันเพื่อทดสอบ
-core_hub_url: http://localhost:3000
-callback_path: /auth/callback         # ต้องตรงกับ callback_url ที่ลงทะเบียนไว้
-
+# api-conventions.md v1.1 ข้อ 1 + 7.6: public ได้เฉพาะ 4 path นี้เท่านั้น
+# ตัดสินใจแล้ว (ทางเลือก ก): ไม่มี endpoint ใต้ /api/v1/ ที่เปิดให้ผู้ที่ยังไม่ login
 public_endpoints:
   - GET /api/health
+  - GET /auth/login
+  - POST /auth/logout
   - GET /auth/callback
 
-# conformance ใช้ probes ตรวจสัญญา API — ประกาศไม่ครบ = ขึ้น SKIP = ยังไม่ผ่าน
 probes:
-  collection: /api/v1/<resources>
-  not_found: /api/v1/<resources>/99999999-9999-4999-8999-999999999999
-  invalid_id: /api/v1/<resources>/not-a-uuid
+  collection: /api/v1/listings
+  not_found: /api/v1/listings/99999999-9999-4999-8999-999999999999
+  invalid_id: /api/v1/listings/not-a-uuid
   create:
-    path: /api/v1/<resources>
-    allowed_role: staff
-    denied_role: student
+    path: /api/v1/listings
+    allowed_role: student        # permissions.ts: STUDENT มี LISTING_CREATE
+    denied_role: alumni          # permissions.ts: ALUMNI ไม่มี LISTING_CREATE -> 403
     invalid_body:
-      someRequiredField: ""
+      title: ""
     valid_body:
-      someRequiredField: value
+      title: "หนังสือ Data Structures"
+      category: "BOOKS_MATERIALS"
+      listingType: "BORROW"
+
+# ui-design-system.md ข้อ 17.0: component ในข้อ 7.1 ที่ยังไม่มีใน @/csmju
+# ให้ประกอบเองจาก class ใน ui.ts + token เท่านั้น แล้วประกาศไว้ตรงนี้
+# (ส่งคำขอตามข้อ 17.4 ให้ PM ย้ายเข้าส่วนกลาง -> UI-REQ-03)
+local_components:
+  - name: EmptyState
+    path: frontend/src/components/shared/States.tsx
+    reason: "ข้อ 9.2 บังคับทุกที่ที่แสดงรายการ แต่ยังไม่มีใน @/csmju"
+  - name: ErrorState
+    path: frontend/src/components/shared/States.tsx
+    reason: "ข้อ 9.3 mapping error.code -> UI แต่ยังไม่มีใน @/csmju"
+  - name: LoadingState
+    path: frontend/src/components/shared/States.tsx
+    reason: "ข้อ 9.1 แต่ยังไม่มีใน @/csmju"
+  - name: FormField
+    path: frontend/src/components/shared/FormField.tsx
+    reason: "ข้อ 7.1/8.1 label+input+error ยังไม่มีใน @/csmju"
+  - name: ListingCard
+    path: frontend/src/components/shared/ListingCard.tsx
+    reason: "การ์ดเฉพาะโดเมนของระบบนี้ ประกอบจาก cardClass + token"
+  - name: AppFrame
+    path: frontend/src/components/shared/AppFrame.tsx
+    reason: "ตัวต่อฝั่ง client ระหว่าง useMe()/useNotifications() กับ <CsmjuAppShell> ของกลาง — layout.tsx เป็น server component จึงเรียก can() ไม่ได้ · ไม่ได้แทนของกลาง"
+
+# ของกลางที่คัดลอกมาไว้ใน frontend/src/csmju/ (ห้ามแก้ · ข้อ 17.0)
+design_system:
+  source: standards/templates/csmju-subsystem-web   # มากับ submodule standards/ ผูกกับ .standards-version
+  vendored_path: frontend/src/csmju
+  files:
+    - frontend/src/csmju/            # ทั้งโฟลเดอร์ คัดลอกทับทั้งชุด (ข้อ 17.0 ห้าม merge ทีละบรรทัด)
+    - frontend/src/app/globals.css
+    - frontend/public/csmju-logo.png
+  local_overrides:
+    - path: frontend/src/lib/ui.ts
+      reason: "ข้อ 7.2/6.1/12.1(5) สั่งให้ปุ่มมี focus-visible + disabled + min-h-11 แต่ ui.ts ของกลางยังไม่มี"
 
 owners:
   pl: "@csmju2030/pl-campus-share"
@@ -33,4 +73,3 @@ owners:
 
 display_name: "CampusShare"
 repo: github.com/CSMJU2030/csmju-campus-share
-status: proposed

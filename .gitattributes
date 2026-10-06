@@ -1,0 +1,3 @@
+# เชลล์สคริปต์ต้องเป็น LF เสมอ — บน Windows core.autocrlf จะทำให้ working tree เป็น CRLF
+# แล้ว docker build จะ copy "#!/bin/sh\r" เข้า image ทำให้ container สตาร์ตไม่ขึ้น
+*.sh text eol=lf

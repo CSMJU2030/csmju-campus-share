@@ -1,0 +1,66 @@
+import { Injectable, Logger } from '@nestjs/common';
+
+/**
+ * Structured logging for authentication/authorization events (spec §35).
+ *
+ * Never logs: access tokens, refresh tokens, Authorization headers, private
+ * keys or passwords. Only event names, subject ids, kids and reasons.
+ */
+@Injectable()
+export class AuthEventsLogger {
+  private readonly logger = new Logger('AuthEvents');
+
+  private emit(level: 'log' | 'warn' | 'error', event: string, fields: Record<string, unknown>): void {
+    this.logger[level](JSON.stringify({ event, ...fields, at: new Date().toISOString() }));
+  }
+
+  /** event บังคับตอนบูต (contracts/log-events.json -> required[0]) */
+  subsystemStarted(fields: {
+    subsystem: string;
+    port: number | string;
+    coreHubUrl?: string;
+    jwksUrl?: string;
+    issuer?: string;
+    audience?: string;
+  }): void {
+    this.emit('log', 'subsystem.started', fields);
+  }
+
+  jwtVerified(fields: { sub: string; kid?: string; coreRole?: string; subsystemRole?: string }): void {
+    this.emit('log', 'jwt.verification.success', fields);
+  }
+
+  /**
+   * contracts/log-events.json กำหนด fields = [reason, kid, path] ครบทุกตัว
+   * กรณีที่ยังไม่รู้ kid (เช่น missing_token) ต้องส่ง kid: null ไม่ใช่ละไว้
+   */
+  jwtRejected(fields: { reason: string; kid?: string | null; path?: string }): void {
+    this.emit('warn', 'jwt.verification.failure', { kid: null, ...fields });
+  }
+
+  unknownKid(fields: { kid: string; knownKids: string[] }): void {
+    this.emit('warn', 'jwks.unknown_kid', fields);
+  }
+
+  jwksRefresh(fields: { url?: string; reason: string; keyCount?: number; kids?: string[] }): void {
+    this.emit('log', 'jwks.refresh', fields);
+  }
+
+  jwksRefreshFailed(fields: { reason: string; cachedKeyCount: number }): void {
+    this.emit('error', 'jwks.refresh.failure', fields);
+  }
+
+  roleMappingFailed(fields: { sub: string; coreRole?: string }): void {
+    this.emit('warn', 'authorization.role_mapping_failed', fields);
+  }
+
+  authorizationDenied(fields: {
+    sub: string;
+    subsystemRole?: string;
+    required?: string[];
+    path?: string;
+    reason?: string;
+  }): void {
+    this.emit('warn', 'authorization.denied', fields);
+  }
+}
