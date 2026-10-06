@@ -52,6 +52,21 @@ export class AuthService {
   }
 
   /**
+   * ตัวเลือกสำหรับ "ลบ" คุกกี้ session — attribute ต้องตรงกับตอนตั้งทุกตัว
+   * ไม่ใช้ res.clearCookie() เพราะ Express 5 ลบ maxAge ออกเสมอ (lib/response.js:720)
+   * จึงได้แต่ Expires=1970 ไม่มี Max-Age=0 ที่ conformance L3-22 บังคับ
+   */
+  get clearedAccessTokenCookieOptions() {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+      maxAge: 0,
+    };
+  }
+
+  /**
    * จุดเริ่ม SSO — auth-contract.md v1.2 (standards 1.7.0) ข้อ 5 บรรทัด 149
    *
    *   GET /auth/login -> 302 {CORE_HUB_WEB_URL}/sso/authorize?subsystem=<ชื่อ>&state=<state>

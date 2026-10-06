@@ -18,3 +18,4 @@ dev/
 backend/postman/
 backend/scripts/dev-token.ts
 backend/test/helpers/token-factory.ts
+conformance-report.json

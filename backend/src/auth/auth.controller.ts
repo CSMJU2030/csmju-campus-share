@@ -57,19 +57,27 @@ export class AuthController {
     res.set('Cache-Control', 'no-store');
     res.set('Referrer-Policy', 'no-referrer');
 
-    // ไม่มี state เลย = เข้าทาง sidebar ของ Core Hub — ทิ้ง token ห้ามแตะคุกกี้ state (ข้อ 5.1)
+    // ข้อ 5.1 bullet 1 — "ตั้งคุกกี้ลบ state ไว้ก่อนตรวจ ทุกคำตอบที่มี state จึงเผาคุกกี้ state
+    // ทิ้งเสมอ (ใช้ได้ครั้งเดียว)" · ไม่มี state = ห้ามแตะ (แท็บอื่นอาจกำลังรอ callback ของตัวเอง)
+    // เดิม: const rawCookie = req.cookies?.[this.authService.stateCookieName] as string | undefined;
+    const rawCookie = stateParam
+      ? (readCookie(req.header('cookie'), this.authService.stateCookieName) ?? undefined)
+      : undefined;
+    if (stateParam) {
+      res.clearCookie(this.authService.stateCookieName, { path: '/auth/callback' });
+    }
+
+    // แถวแรกของตารางข้อ 5.1 — ต้องตรวจ "ก่อน" state ไม่งั้นคำขอที่ไม่มีทั้ง token และ state
+    // จะตกเข้าสาขา redirect แล้วตอบ 302 แทน 400 (conformance L3-14)
+    if (!accessToken) {
+      throw badRequest('ไม่ได้รับ access_token จาก Core Hub');
+    }
+
+    // ไม่มี state เลย = เข้าทาง sidebar ของ Core Hub — ทิ้ง token ไม่ตั้งคุกกี้ใด ๆ (ข้อ 5.1)
     if (!stateParam) {
       // ห้าม log URL เต็มของ callback (มี token อยู่ใน query) — log แค่ path
       this.authEvents.jwtRejected({ reason: TokenRejectionReason.SSO_RESTART_WITHOUT_STATE, path: req.path });
       return res.redirect('/auth/login');
-    }
-
-    // เดิม: const rawCookie = req.cookies?.[this.authService.stateCookieName] as string | undefined;
-    const rawCookie = readCookie(req.header('cookie'), this.authService.stateCookieName) ?? undefined;
-    res.clearCookie(this.authService.stateCookieName, { path: '/auth/callback' });
-
-    if (!accessToken) {
-      throw badRequest('ไม่ได้รับ access_token จาก Core Hub');
     }
 
     const decoded = rawCookie ? decodeStateCookie(rawCookie) : null;
@@ -123,7 +131,11 @@ export class AuthController {
   @HttpCode(303)
   logout(@Res() res: Response) {
     res.set('Cache-Control', 'no-store');
-    res.clearCookie(this.authService.accessTokenCookieName, { path: '/' });
+    res.cookie(
+      this.authService.accessTokenCookieName,
+      '',
+      this.authService.clearedAccessTokenCookieOptions,
+    );
     res.clearCookie(this.authService.stateCookieName, { path: '/auth/callback' });
     return res.redirect(303, this.authService.buildLogoutUrl());
   }
