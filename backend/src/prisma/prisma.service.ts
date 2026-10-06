@@ -39,10 +39,12 @@ export class PrismaService
     try {
       await this.$queryRaw`SELECT 1`;
     } catch (error) {
+      // แนบต้นเหตุด้วย `cause` (preserve-caught-error) แทนการต่อ message ของ driver
+      // เข้ากับข้อความเรา — stack เดิมไม่หาย และข้อความ driver ซึ่งอาจมี host/user
+      // ของฐานข้อมูลจะไม่ถูกนำไปต่อในข้อความที่ส่งต่อ
       throw new Error(
-        `เชื่อมต่อฐานข้อมูลไม่ได้ — ตรวจ DATABASE_URL และว่า PostgreSQL รันอยู่จริง: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
+        'เชื่อมต่อฐานข้อมูลไม่ได้ — ตรวจ DATABASE_URL และว่า PostgreSQL รันอยู่จริง',
+        { cause: error },
       );
     }
   }

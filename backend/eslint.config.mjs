@@ -1,6 +1,11 @@
-// QA-01 — ใช้เฉพาะชุด typescript-eslint
-// ไม่ดึง @eslint/js เพราะกฎ no-undef จะร้องหา global ของ Node (process, console)
-// ซึ่งต้องพึ่งแพ็กเกจ `globals` ที่ไม่อยู่ใน whitelist ของ ARC-02
+// QA-01 — ชุดกฎ: eslint:recommended + typescript-eslint
+//
+// no-undef ปิดไว้ตามคำแนะนำของ typescript-eslint เอง — TypeScript ตรวจ symbol
+// ที่ไม่มีอยู่จริงให้แล้วตั้งแต่ตอน compile และกฎนี้ให้ false positive กับ
+// type-only construct (เช่น generic parameter) · globals ยังคงใส่ไว้ให้กฎอื่น
+// ที่อ่าน scope (เช่น no-redeclare) รู้จัก global ของ Node และ Jest
+import js from "@eslint/js";
+import globals from "globals";
 import tseslint from "typescript-eslint";
 
 const config = tseslint.config(
@@ -15,15 +20,29 @@ const config = tseslint.config(
       "src/dev/**",
     ],
   },
+  js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    languageOptions: {
+      globals: { ...globals.node, ...globals.jest },
+    },
     rules: {
+      "no-undef": "off",
+      // log-events.md กำหนดให้ log ผ่าน logger กลาง — console ที่เหลือต้องจงใจ
+      // และมี eslint-disable กำกับเหตุผลไว้ (เช่น สคริปต์ generate-openapi)
+      "no-console": "warn",
       // ขีดล่างนำหน้า = ตั้งใจไม่ใช้ (เช่น placeholder ที่รอ implement)
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
       ],
     },
+  },
+  {
+    // สคริปต์ CLI — "ผลลัพธ์" ของมันคือข้อความบนเทอร์มินัล ไม่ใช่ log ของเซอร์วิส
+    // log-events.md บังคับเฉพาะโค้ดที่รันเป็นเซอร์วิส จึงปิด no-console เฉพาะที่นี่
+    files: ["prisma/seed.ts", "scripts/**/*.ts", "src/generate-openapi.ts"],
+    rules: { "no-console": "off" },
   },
 );
 

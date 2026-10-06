@@ -106,14 +106,12 @@ async function generate(): Promise<void> {
 
   // ท้ายไฟล์ต้องมี newline — ไม่งั้น `git diff` ใน check-openapi-sync.sh เห็นต่างทุกครั้ง
   writeFileSync('./openapi.json', `${JSON.stringify(document, null, 2)}\n`);
-  // eslint-disable-next-line no-console
   console.log('openapi.json generated');
 
   await app.close();
 }
 
 generate().catch((error: unknown) => {
-  // eslint-disable-next-line no-console
   console.error(error);
   process.exit(1);
 });
