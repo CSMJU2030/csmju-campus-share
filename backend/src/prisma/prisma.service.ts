@@ -18,7 +18,12 @@ export class PrismaService
       throw new Error('DATABASE_URL is not defined');
     }
 
-    const pool = new Pool({ connectionString });
+    // deployment.md 4.1 — ไม่จำกัด = pg เปิดได้ 10 เส้นต่อระบบ · 37 ระบบ = 370 เส้น
+    // ซึ่งเกินที่ PostgreSQL กลางของ server รับได้
+    const pool = new Pool({
+      connectionString,
+      max: Number(process.env.DATABASE_POOL_MAX) || 5,
+    });
     const adapter = new PrismaPg(pool);
 
     super({ adapter });

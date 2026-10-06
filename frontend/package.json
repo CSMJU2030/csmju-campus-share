@@ -1,5 +1,5 @@
 {
-  "name": "campusshare-frontend",
+  "name": "frontend",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3205",

@@ -49,7 +49,7 @@ export function Marketplace({ mine = false }: { mine?: boolean }) {
       <div aria-live="polite" className="space-y-6">
         {list.loading && !list.data ? <LoadingState /> : list.error ? <ErrorState error={list.error} onRetry={list.reload} /> : meta?.total === 0 ? (
           filtered ? <EmptyState title="ไม่พบประกาศที่ตรงกับการค้นหา" hint="ลองเปลี่ยนคำค้นหาหรือล้างตัวกรอง"><button type="button" className={secondaryButtonClass} onClick={() => setF(blank)}>ล้างตัวกรอง</button></EmptyState>
-            : <EmptyState title={mine ? "คุณยังไม่ได้ลงของ" : "ยังไม่มีประกาศในตลาด"} hint={createCta ? "เริ่มต้นด้วยการลงของชิ้นแรก" : undefined}>{createCta}</EmptyState>
+            : <EmptyState title={mine ? "คุณยังไม่ได้ลงของ" : "ยังไม่มีของในระบบ"} hint={createCta ? "เริ่มต้นด้วยการลงของชิ้นแรก" : undefined}>{createCta}</EmptyState>
         ) : (
           <>
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">{list.data?.data.map((l) => <ListingCard key={l.id} l={l} />)}</div>

@@ -68,7 +68,7 @@ export class CoreHubJwtGuard implements CanActivate {
     if (value && rest.length === 0 && scheme?.toLowerCase() === 'bearer') {
       return value;
     }
-    const cookieName = `${cookieSafeName(process.env.SUBSYSTEM_NAME ?? 'csmju-campus-share')}_access_token`;
+    const cookieName = `${cookieSafeName(process.env.SUBSYSTEM_ID ?? 'csmju-campus-share')}_access_token`;
     return readCookie(req.header('cookie'), cookieName) ?? undefined;
   }
 }

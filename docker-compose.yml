@@ -1,68 +1,95 @@
-# CSMJU2030 tech-stack.md ข้อ 1.1 + ข้อ 2 — ต้องมี Dockerfile และ docker-compose.yml
-# ยกทั้งกองขึ้นด้วย:  docker compose up --build
+# CampusShare — ยกทั้งกองแบบเดียวกับที่ server รัน (standards docs/deployment.md)
 #
-# หมายเหตุ port ของฐานข้อมูล: map 5434 -> 5432 เพื่อไม่ชนกับ PostgreSQL ที่ติดตั้งตรงบนเครื่อง
-# (ถ้าจะใช้ตัวใน Docker ให้แก้ DATABASE_URL ใน backend/.env เป็น port 5434)
+#   docker compose up -d db              PostgreSQL อย่างเดียว สำหรับ `pnpm dev` (พอร์ต 5434)
+#   docker compose up -d --build         db + api + web ตามที่ server รันจริง
+#                                        -> http://localhost:3205
+#
+# server ไม่ได้ใช้ไฟล์นี้ — ที่นั่น DevOps รัน image สองตัวเดียวกันกับ PostgreSQL กลาง
+# ไฟล์นี้ทำหน้าที่แทนบนเครื่องเรา · ชื่อ service เป็นส่วนหนึ่งของสัญญา (deployment.md 3.1):
+# image ของ web ฝัง http://api:4000 ไว้ตอน build แล้ว ห้ามเปลี่ยนชื่อ `api` หรือพอร์ต 4000
+
+# ล็อกเหมือน server (deployment.md 3.4): ระบบไฟล์อ่านอย่างเดียว ไม่มี capability
+# โค้ดที่เขียนไฟล์นอก /tmp จะพังที่นี่ก่อนไปพังบน server
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
 
 services:
   db:
     image: postgres:16-alpine
-    container_name: campusshare-db
+    container_name: csmju-campus-share-db
     restart: unless-stopped
     environment:
+      # ใช้เฉพาะในเครื่อง — บน server DevOps สร้าง database กับ role ให้
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      # data-dictionary.md ข้อ 9.1: ชื่อ database = <subsystem>_db
+      # data-dictionary.md 9.1: ชื่อ database = <subsystem>_db
       POSTGRES_DB: csmju_campus_share_db
     ports:
-      - "5434:5432"
+      # 5434 กันชนกับ PostgreSQL ที่ติดตั้งตรงบนเครื่อง
+      - '127.0.0.1:5434:5432'
     volumes:
       - campusshare-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d csmju_campus_share_db"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d csmju_campus_share_db']
       interval: 5s
       timeout: 5s
       retries: 10
 
-  backend:
+  api:
+    <<: *hardening
     build:
       context: .
-      dockerfile: Dockerfile
-    container_name: campusshare-backend
+      dockerfile: backend/Dockerfile
+    container_name: csmju-campus-share-api
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      PORT: "4205"
-      # ในเครือข่ายของ compose ใช้ชื่อ service "db" และ port ภายใน 5432
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/csmju_campus_share_db?schema=public
-      SUBSYSTEM_NAME: csmju-campus-share
-      PUBLIC_ORIGIN: http://localhost:3205
-      COREHUB_WEB_URL: ${COREHUB_WEB_URL:-http://host.docker.internal:3000}
-      COREHUB_JWKS_URL: ${COREHUB_JWKS_URL:-http://host.docker.internal:3000/api/v1/.well-known/jwks.json}
-      COREHUB_ISSUER: core-hub
-      COREHUB_AUDIENCE: csmju2030
-    ports:
-      - "4205:4205"
     depends_on:
       db:
         condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/csmju_campus_share_db?schema=public
+      DATABASE_POOL_MAX: 5
+      CORE_HUB_URL: ${CORE_HUB_URL:-https://csmju2030.jowave.com}
+      CORE_HUB_JWKS_URL: ${CORE_HUB_JWKS_URL:-https://csmju2030.jowave.com/api/v1/.well-known/jwks.json}
+      # เว็บของ Core Hub ตามที่ "เบราว์เซอร์" มองเห็น (/auth/login เด้งไปที่นี่)
+      CORE_HUB_WEB_URL: ${CORE_HUB_WEB_URL:-https://csmju2030.jowave.com}
+      CORE_HUB_ISSUER: ${CORE_HUB_ISSUER:-core-hub}
+      CORE_HUB_AUDIENCE: ${CORE_HUB_AUDIENCE:-csmju2030}
+      SUBSYSTEM_ID: ${SUBSYSTEM_ID:-csmju-campus-share}
+      DEPARTMENT_CODE: ${DEPARTMENT_CODE:-CS}
+      # origin ที่เบราว์เซอร์เห็น = พอร์ตของ web ไม่ใช่ของ api
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3205}
+      TZ: Asia/Bangkok
+    tmpfs:
+      - /tmp:size=32m
+    # ไม่เปิด ports: เบราว์เซอร์ถึง api ผ่าน web เท่านั้น (/api/*, /auth/*)
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
 
-  frontend:
+  web:
+    <<: *hardening
     build:
       context: .
       dockerfile: frontend/Dockerfile
-    container_name: campusshare-frontend
+    container_name: csmju-campus-share-web
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      # next.config.ts proxy /api, /auth, /health ไปที่นี่ (ต้องเป็นชื่อ service ไม่ใช่ localhost)
-      BACKEND_ORIGIN: http://backend:4205
-    ports:
-      - "3205:3205"
     depends_on:
-      - backend
+      api:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=32m
+      # cache ของ next/image
+      - /app/frontend/.next/cache:size=64m
+    environment:
+      CORE_HUB_WEB_URL: ${CORE_HUB_WEB_URL:-https://csmju2030.jowave.com}
+      SUBSYSTEM_ID: ${SUBSYSTEM_ID:-csmju-campus-share}
+      TZ: Asia/Bangkok
+    ports:
+      # callback ที่ลงทะเบียนกับ Core Hub คือ http://localhost:3205/auth/callback
+      - '127.0.0.1:3205:3000'
 
 volumes:
   campusshare-db-data:

@@ -1,15 +1,11 @@
-node_modules
+# Build context is the repo root (standards docs/deployment.md 3 · DEP-03)
 **/node_modules
-.git
-.github
-standards
-**/dist
 **/.next
-**/coverage
+**/dist
 **/generated
-*.zip
-.env
-**/.env
-**/.env.local
-**/*.pem
-**/*.key
+**/coverage
+**/.env*
+**/*.log
+.git
+standards
+docs
