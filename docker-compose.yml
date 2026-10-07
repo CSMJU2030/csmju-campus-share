@@ -14,6 +14,7 @@ x-hardening: &hardening
   read_only: true
   cap_drop: [ALL]
   security_opt: ['no-new-privileges:true']
+  logging: { driver: json-file, options: { max-size: '10m', max-file: '3' } }
 
 services:
   db:
@@ -44,6 +45,7 @@ services:
       dockerfile: backend/Dockerfile
     container_name: csmju-campus-share-api
     restart: unless-stopped
+    mem_limit: 512m
     depends_on:
       db:
         condition: service_healthy
@@ -76,6 +78,7 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: csmju-campus-share-web
     restart: unless-stopped
+    mem_limit: 384m
     depends_on:
       api:
         condition: service_healthy
