@@ -13,7 +13,9 @@ type Field = "title" | "description" | "category";
 const cats = Object.entries(CATEGORY_LABEL);
 
 // backend ไม่มี endpoint แก้ไข/ลบ listing → ฟอร์มนี้มีเฉพาะ "ลงของใหม่"
-export function ListingForm() {
+type ListingFormProps = { embedded?: boolean; onCancel?: () => void };
+
+export function ListingForm({ embedded = false, onCancel }: ListingFormProps) {
   const router = useRouter();
   const [v, setV] = useState({ title: "", description: "", category: "", listingType: "borrow" as ListingType });
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
@@ -40,8 +42,8 @@ export function ListingForm() {
   }
   const bad = (k: Field) => ({ "aria-invalid": !!errors[k], className: inputClass });
   return (
-    <form onSubmit={submit} noValidate className={`${cardClass} max-w-2xl space-y-4 p-6`}>
-      <h1 className="font-display text-headline-md md:text-headline-lg">ลงของ</h1>
+    <form onSubmit={submit} noValidate className={embedded ? "space-y-4" : `${cardClass} mx-auto max-w-2xl space-y-4 p-6`}>
+      <h1 id={embedded ? "listing-create-dialog-title" : undefined} className={`${embedded ? "pr-12 " : ""}font-display text-headline-md md:text-headline-lg`}>ลงของ</h1>
       <p className="text-body-md text-on-surface-variant">ช่องที่มี * จำเป็นต้องกรอก</p>
       <FormField label="ชื่อสิ่งของ" required error={errors.title}><input {...bad("title")} maxLength={120} value={v.title} onChange={on("title")} /></FormField>
       <FormField label="รายละเอียด"><textarea rows={4} className={inputClass} maxLength={1000} value={v.description} onChange={on("description")} /></FormField>
@@ -57,7 +59,7 @@ export function ListingForm() {
       </FormField>
       {formErr.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-error-container px-4 py-3 text-label-sm text-on-error-container">{formErr.map((m) => <li key={m}>{m}</li>)}</ul>}
       <div className="flex justify-end gap-3 pt-2">
-        <Link href="/" className={secondaryButtonClass}>ยกเลิก</Link>
+        {onCancel ? <button type="button" className={secondaryButtonClass} onClick={onCancel}>ยกเลิก</button> : <Link href="/" className={secondaryButtonClass}>ยกเลิก</Link>}
         <button type="submit" className={primaryButtonClass} disabled={busy || cats.length === 0} aria-busy={busy}>ลงของ</button>
       </div>
     </form>

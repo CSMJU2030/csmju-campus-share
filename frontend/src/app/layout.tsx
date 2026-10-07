@@ -11,11 +11,14 @@ const CORE_HUB_WEB_URL = process.env.CORE_HUB_WEB_URL;
 
 export const metadata: Metadata = { title: "CampusShare · CSMJU" };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({ children, modal }: { children: React.ReactNode; modal: React.ReactNode }) {
   return (
     <html lang="th" className={`${jakarta.variable} ${noto.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col bg-background text-on-surface">
-        <AppFrame coreHubUrl={CORE_HUB_WEB_URL}>{children}</AppFrame>
+        <AppFrame coreHubUrl={CORE_HUB_WEB_URL}>
+          {children}
+          {modal}
+        </AppFrame>
       </body>
     </html>
   );
