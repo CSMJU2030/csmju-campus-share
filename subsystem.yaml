@@ -4,7 +4,7 @@ conformance_level: L3
 # พอร์ตที่ผู้ดูแล dev server กำหนดให้ทีม (repo-structure.md: frontend 32xx · backend 42xx)
 # frontend เป็นประตูเดียว proxy /api/* และ /auth/* ไป backend :4205
 # callback ที่ลงทะเบียนจึงใช้พอร์ต frontend เสมอ (connect-core-hub.md ข้อ 3)
-base_url: http://localhost:3205
+base_url: https://csmju-campus-share.jowave.com
 core_hub_url: https://csmju2030.jowave.com
 core_hub_web_url: https://csmju2030.jowave.com   # Core Hub ตัวจริง (connect-core-hub.md)
 callback_path: /auth/callback

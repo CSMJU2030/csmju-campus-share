@@ -1238,7 +1238,7 @@
         }
       },
       "patch": {
-        "operationId": "ListingsController_updateStatus",
+        "operationId": "ListingsController_update",
         "parameters": [
           {
             "name": "id",
@@ -1254,7 +1254,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateListingStatusDto"
+                "$ref": "#/components/schemas/UpdateListingDto"
               }
             }
           }
@@ -5923,16 +5923,26 @@
           "listingType"
         ]
       },
-      "UpdateListingStatusDto": {
+      "UpdateListingDto": {
         "type": "object",
         "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "ชื่อสิ่งของ"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1000,
+            "description": "รายละเอียด — ส่งค่าว่างเพื่อลบคำอธิบายออก"
+          },
+          "category": {
+            "$ref": "#/components/schemas/ListingCategory"
+          },
           "status": {
             "$ref": "#/components/schemas/ListingStatus"
           }
-        },
-        "required": [
-          "status"
-        ]
+        }
       },
       "CreateBorrowRequestDto": {
         "type": "object",

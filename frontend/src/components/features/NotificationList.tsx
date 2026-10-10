@@ -12,7 +12,8 @@ const TAB: Partial<Record<Notification["type"], "owner" | "requester">> = { NEW_
 const target = (n: Notification) =>
   n.refRequestId ? `/borrow-requests${TAB[n.type] ? `?tab=${TAB[n.type]}` : ""}` : n.refListingId ? `/listings/${n.refListingId}` : null;
 
-export function NotificationList() {
+/** showHeader=false เมื่อฝังเป็นแท็บในหน้า "คำขอและแจ้งเตือน" (หัวข้อมาจากหน้าแม่แล้ว) */
+export function NotificationList({ showHeader = true }: { showHeader?: boolean } = {}) {
   const router = useRouter();
   const { items, markRead } = useNotifications();
   const [busy, setBusy] = useState(false);
@@ -26,7 +27,7 @@ export function NotificationList() {
   }
   return (
     <>
-      <header className="space-y-2"><h1 className="font-display text-headline-md md:text-headline-lg">การแจ้งเตือน</h1></header>
+      {showHeader && <header className="space-y-2"><h1 className="font-display text-headline-md md:text-headline-lg">การแจ้งเตือน</h1></header>}
       {items.length === 0 ? <EmptyState title="ยังไม่มีการแจ้งเตือน" /> : (
         <ul className="space-y-3">
           {items.map((n) => (

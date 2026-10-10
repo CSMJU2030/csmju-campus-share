@@ -23,6 +23,6 @@ export default () => ({
     // origin ที่เบราว์เซอร์เห็นจริง = frontend ที่ proxy /api, /auth, /health ไป backend
     // (ดู frontend/next.config.ts) — callback_url ที่ลงทะเบียนกับ Core Hub ต้องเป็น origin นี้
     // ห้ามอนุมานจาก req.get('host') เพราะ client ปลอม Host header ได้
-    publicOrigin: process.env.PUBLIC_ORIGIN ?? 'http://localhost:3003',
+    publicOrigin: process.env.PUBLIC_ORIGIN ?? 'http://localhost:3205',
   },
 });

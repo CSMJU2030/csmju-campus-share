@@ -19,3 +19,7 @@ backend/postman/
 backend/scripts/dev-token.ts
 backend/test/helpers/token-factory.ts
 conformance-report.json
+
+# dump ฐานข้อมูลที่ผู้ดูแลส่งมาให้ — ห้ามขึ้น repo (ระบุเจาะจง ห้ามใช้ *.sql เพราะจะกิน migration)
+backend/pm-seed-dump.*
+*.dump
