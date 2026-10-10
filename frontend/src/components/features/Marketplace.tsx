@@ -39,7 +39,6 @@ export function Marketplace({ mine = false }: { mine?: boolean }) {
           <h1 className="font-display text-headline-md md:text-headline-lg">{mine ? "ของของฉัน" : "CampusShare"}</h1>
           <p className="text-body-md text-on-surface-variant">{mine ? "จัดการสิ่งของที่คุณลงไว้ (ไม่แสดงรายการเก็บถาวรจนกว่าจะเลือกสถานะ)" : "พื้นที่แบ่งปันสิ่งของ ภายในสาขา CSMJU"}</p>
         </div>
-        {createCta}
       </header>
       <section aria-label="ตัวกรอง" className="grid gap-4 md:grid-cols-4">
         <FormField label="ค้นหา"><input type="search" className={inputClass} value={f.q} placeholder="ชื่อสิ่งของ" onChange={(e) => set("q", e.target.value)} /></FormField>

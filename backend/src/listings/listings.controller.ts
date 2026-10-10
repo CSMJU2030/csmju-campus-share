@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
-import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 import { QueryListingsDto } from './dto/query-listings.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
@@ -33,14 +33,14 @@ export class ListingsController {
     return this.listingsService.create(dto, user);
   }
 
-  // เจ้าของเปิด/ปิดรายการเอง (ตรวจความเป็นเจ้าของใน service)
+  // เจ้าของแก้ชื่อ/รายละเอียด/หมวดหมู่ และเปิด-ปิดรายการเอง (ตรวจความเป็นเจ้าของใน service)
   @RequirePermissions(Permission.LISTING_UPDATE_OWN)
   @Patch(':id')
-  updateStatus(
+  update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
-    @Body() dto: UpdateListingStatusDto,
+    @Body() dto: UpdateListingDto,
     @CurrentUser() user: CoreHubIdentity,
   ) {
-    return this.listingsService.updateStatus(id, dto, user);
+    return this.listingsService.update(id, dto, user);
   }
 }

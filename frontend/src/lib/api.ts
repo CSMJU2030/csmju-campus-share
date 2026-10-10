@@ -95,6 +95,8 @@ const get = async <T,>(path: string, o?: Opt) => (await request<T>(path, o)).dat
 // ---------- endpoints ----------
 export interface ListingQuery { category?: ListingCategory; listingType?: ListingType | ""; status?: ListingStatus | ""; q?: string; page?: number; limit?: number }
 export interface CreateListingInput { title: string; description?: string; category: ListingCategory; listingType: ListingType }
+/** PATCH /listings/:id — partial update: ส่งเฉพาะฟิลด์ที่ต้องการเปลี่ยน (api-conventions.md ข้อ 4) */
+export interface UpdateListingInput { title?: string; description?: string; category?: ListingCategory; status?: "AVAILABLE" | "UNAVAILABLE" }
 export interface RespondInput { status: "APPROVED" | "REJECTED" | "RETURNED"; responseMessage?: string; dueDate?: string }
 
 /** วันที่ (yyyy-mm-dd) → ISO สิ้นวันตามเวลาไทย สำหรับ dueDate */
@@ -111,8 +113,10 @@ export const api = {
   getListing: (id: string) => get<Listing>(`/listings/${encodeURIComponent(id)}`),
   createListing: (i: CreateListingInput) =>
     get<Listing>("/listings", { method: "POST", body: { title: i.title, description: i.description || undefined, category: i.category, listingType: i.listingType } }),
+  updateListing: (id: string, i: UpdateListingInput) =>
+    get<Listing>(`/listings/${encodeURIComponent(id)}`, { method: "PATCH", body: { ...i } }),
   setListingStatus: (id: string, status: "AVAILABLE" | "UNAVAILABLE") =>
-    get<Listing>(`/listings/${encodeURIComponent(id)}`, { method: "PATCH", body: { status } }),
+    api.updateListing(id, { status }),
   /** ไม่มี endpoint "ของฉัน": ดึง limit=100 วนทุกหน้าแล้วกรอง ownerCoreUserId ฝั่ง client
    *  (ไม่ส่ง status = backend ซ่อน ARCHIVED ให้เอง; ส่ง status=ARCHIVED เพื่อดูของที่เก็บถาวร) */
   async listMyListings(ownerId: string, q: Omit<ListingQuery, "page" | "limit">) {

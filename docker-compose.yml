@@ -14,6 +14,8 @@ x-hardening: &hardening
   read_only: true
   cap_drop: [ALL]
   security_opt: ['no-new-privileges:true']
+  # deployment.md ข้อ 6 — 37 ระบบบนเครื่องเดียว ถ้าไม่หมุน log ดิสก์ของ server เต็ม
+  logging: { driver: json-file, options: { max-size: '10m', max-file: '3' } }
 
 services:
   db:
@@ -65,6 +67,8 @@ services:
       TZ: Asia/Bangkok
     tmpfs:
       - /tmp:size=32m
+    # deployment.md ข้อ 6 — จำกัด RAM เท่ากับที่ server ให้ เพื่อเจอปัญหาในเครื่องก่อน
+    mem_limit: 512m
     # ไม่เปิด ports: เบราว์เซอร์ถึง api ผ่าน web เท่านั้น (/api/*, /auth/*)
     extra_hosts:
       - 'host.docker.internal:host-gateway'
@@ -83,6 +87,7 @@ services:
       - /tmp:size=32m
       # cache ของ next/image
       - /app/frontend/.next/cache:size=64m
+    mem_limit: 384m
     environment:
       CORE_HUB_WEB_URL: ${CORE_HUB_WEB_URL:-https://csmju2030.jowave.com}
       SUBSYSTEM_ID: ${SUBSYSTEM_ID:-csmju-campus-share}

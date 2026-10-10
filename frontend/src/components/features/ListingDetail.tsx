@@ -5,7 +5,7 @@ import { FormField } from "@/components/shared/FormField";
 import { useMe } from "@/components/shared/Providers";
 import { ErrorState, LoadingState, errorText } from "@/components/shared/States";
 import { api, toApiError } from "@/lib/api";
-import { CATEGORY_LABEL, LISTING_STATUS_LABEL, formatDate, label } from "@/lib/labels";
+import { CATEGORY_LABEL, LISTING_STATUS_LABEL, LISTING_TYPE_LABEL, formatDate, label } from "@/lib/labels";
 import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
 import { useAsync } from "@/hooks/useAsync";
 
@@ -18,13 +18,17 @@ export function ListingDetail({ id }: { id: string }) {
   const [reporting, setReporting] = useState(false);
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
+  // ฟอร์มแก้ไขอยู่ในหน้านี้เลย ไม่ใช้ ListingForm ซ้ำ เพราะฟอร์มนั้นบังคับ listingType
+  // ซึ่งแก้ไม่ได้หลังลงประกาศแล้ว (คำขอที่ค้างอยู่จะเปลี่ยนความหมาย)
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ title: "", description: "", category: "" });
 
   if (l.loading && !l.data) return <LoadingState />;
   if (l.error || !l.data) return <ErrorState error={l.error ?? toApiError(null)} onRetry={l.reload} />;
   const x = l.data;
   const isOwner = !!user && user.id === x.ownerCoreUserId;
-  const canManage = isOwner && can("listing:manage_own");
-  const canRequest = !isOwner && can("borrow:request");
+  const canManage = isOwner && can("listing:update:own");
+  const canRequest = !isOwner && can("borrow-request:create");
   const canReport = !isOwner && can("report:create");
   // สถานะอื่น (PENDING/BORROWED/GIVEN_AWAY/ARCHIVED) ระบบเปลี่ยนให้เอง เจ้าของสลับไม่ได้
   const toggleTo = x.status === "AVAILABLE" ? "UNAVAILABLE" : x.status === "UNAVAILABLE" ? "AVAILABLE" : null;
@@ -38,7 +42,10 @@ export function ListingDetail({ id }: { id: string }) {
   }
   const rows: [string, string][] = [
     ["หมวดหมู่", label(CATEGORY_LABEL, x.category)], ["สถานะ", label(LISTING_STATUS_LABEL, x.status)],
-    ["เจ้าของ", isOwner ? "คุณ" : "เจ้าของ"],
+    // reference-data.md ข้อ 8 ห้ามระบบย่อยเก็บชื่อ/อีเมลของคน (เก็บได้แค่ coreUserId)
+    // และ GET /people ของ Core Hub ตอบ 403 กับนักศึกษา (connect-core-hub.md ข้อ 9)
+    // จึงไม่มีชื่อเจ้าของให้แสดง — ขึ้นแถวนี้เฉพาะตอนเป็นของเราเอง
+    ...(isOwner ? ([["เจ้าของ", "คุณ"]] as [string, string][]) : []),
     ["ลงเมื่อ", formatDate(x.createdAt)], ["เคลื่อนไหวล่าสุด", formatDate(x.lastActivityAt)],
   ];
   return (
@@ -51,13 +58,51 @@ export function ListingDetail({ id }: { id: string }) {
       {note && <p role="status" className="rounded-lg bg-primary-container/10 px-4 py-3 text-primary-container">{note}</p>}
 
       {isOwner ? (
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          {canManage && toggleTo ? (
-            <button type="button" className={secondaryButtonClass} disabled={busy} aria-busy={busy}
-              onClick={() => run(() => api.setListingStatus(id, toggleTo), toggleTo === "UNAVAILABLE" ? "ปิดชั่วคราวแล้ว" : "เปิดให้ขออีกครั้งแล้ว")}>
-              {toggleTo === "UNAVAILABLE" ? "ปิดชั่วคราว" : "เปิดใหม่"}
-            </button>
-          ) : <p className="text-body-md text-on-surface-variant">สถานะนี้ระบบเปลี่ยนให้ตามคำขอ จึงตั้งค่าเองไม่ได้ (จัดการคำขอได้ที่เมนู “คำขอ”)</p>}
+        <div className="space-y-4">
+          {canManage && toggleTo && editing && (
+            <div className="max-w-prose space-y-4">
+              <FormField label="ชื่อสิ่งของ" required>
+                <input className={inputClass} maxLength={120} value={form.title}
+                  onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
+              </FormField>
+              <FormField label="รายละเอียด">
+                <textarea rows={4} className={inputClass} maxLength={1000} value={form.description}
+                  onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+              </FormField>
+              <FormField label="หมวดหมู่" required>
+                <select className={inputClass} value={form.category}
+                  onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}>
+                  {Object.entries(CATEGORY_LABEL).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+                </select>
+              </FormField>
+              <p className="text-label-sm text-on-surface-variant">ประเภท ({label(LISTING_TYPE_LABEL, x.listingType)}) แก้ไม่ได้หลังลงประกาศแล้ว — ถ้าต้องการเปลี่ยนให้ลงประกาศใหม่</p>
+              <div className="flex justify-end gap-3">
+                <button type="button" className={secondaryButtonClass} disabled={busy} onClick={() => setEditing(false)}>ยกเลิก</button>
+                <button type="button" className={primaryButtonClass} disabled={busy || !form.title.trim() || !form.category} aria-busy={busy}
+                  onClick={() => run(
+                    () => api.updateListing(id, { title: form.title.trim(), description: form.description.trim(), category: form.category as typeof x.category }),
+                    "บันทึกการแก้ไขแล้ว",
+                    () => setEditing(false),
+                  )}>บันทึก</button>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {canManage && toggleTo ? (
+              <>
+                {!editing && (
+                  <button type="button" className={secondaryButtonClass} disabled={busy}
+                    onClick={() => { setForm({ title: x.title, description: x.description ?? "", category: x.category }); setEditing(true); }}>
+                    แก้ไข
+                  </button>
+                )}
+                <button type="button" className={secondaryButtonClass} disabled={busy} aria-busy={busy}
+                  onClick={() => run(() => api.setListingStatus(id, toggleTo), toggleTo === "UNAVAILABLE" ? "ปิดชั่วคราวแล้ว" : "เปิดให้ขออีกครั้งแล้ว")}>
+                  {toggleTo === "UNAVAILABLE" ? "ปิดชั่วคราว" : "เปิดใหม่"}
+                </button>
+              </>
+            ) : <p className="text-body-md text-on-surface-variant">สถานะนี้ระบบเปลี่ยนให้ตามคำขอ จึงตั้งค่าเองไม่ได้ (จัดการคำขอได้ที่เมนู “คำขอ”)</p>}
+          </div>
         </div>
       ) : canRequest && x.status === "AVAILABLE" ? (
         <div className="max-w-prose space-y-4">

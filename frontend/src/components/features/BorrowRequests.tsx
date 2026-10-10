@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { RequestStatusBadge, TypeBadge } from "@/components/shared/Badges";
 import { FormField } from "@/components/shared/FormField";
-import { useMe } from "@/components/shared/Providers";
+import { useMe, useNotifications } from "@/components/shared/Providers";
 import { EmptyState, ErrorState, LoadingState, errorText } from "@/components/shared/States";
+import { NotificationList } from "@/components/features/NotificationList";
 import { api, endOfDayIso, toApiError } from "@/lib/api";
 import { formatDate } from "@/lib/labels";
 import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
@@ -13,6 +14,8 @@ import { useAsync } from "@/hooks/useAsync";
 import type { BorrowRequest } from "@/types";
 
 type Side = "requester" | "owner";
+/** การแจ้งเตือนเป็นแค่ทางลัดไปหาคำขออยู่แล้ว จึงรวมเป็นแท็บในหน้าเดียวกัน */
+type Tab = Side | "notifications";
 const today = () => new Date().toISOString().slice(0, 10);
 
 /** การ์ดคำขอ 1 รายการ. actions=false ใช้แบบอ่านอย่างเดียว (หน้า admin) */
@@ -22,7 +25,7 @@ export function RequestCard({ r, side, actions = true, onChanged }: { r: BorrowR
   const [due, setDue] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const canRespond = actions && can("borrow:respond");
+  const canRespond = actions && can("borrow-request:update:own");
 
   // BORROW ต้องมีวันนัดคืนตอนอนุมัติ · GIVEAWAY ห้ามมี (backend ตอบ 400 ถ้าผิด)
   const isGiveaway = r.listing?.listingType === "GIVEAWAY";
@@ -86,8 +89,10 @@ export function RequestCard({ r, side, actions = true, onChanged }: { r: BorrowR
 
 export function BorrowRequests() {
   const params = useSearchParams();
-  const [side, setSide] = useState<Side>(params.get("tab") === "owner" ? "owner" : "requester");
+  const initial = params.get("tab");
+  const [tab, setTab] = useState<Tab>(initial === "owner" ? "owner" : initial === "notifications" ? "notifications" : "requester");
   const { user } = useMe();
+  const { unread } = useNotifications();
   const q = useAsync(() => api.myBorrowRequests(), []);
   if (q.loading && !q.data) return <LoadingState />;
   if (q.error || !q.data) return <ErrorState error={q.error ?? toApiError(null)} onRetry={q.reload} />;
@@ -95,19 +100,25 @@ export function BorrowRequests() {
   // backend คืน array เดียว (api-conventions ข้อ 3) — แยกฝั่งที่นี่จาก id ของผู้ใช้
   const mine = q.data.filter((r) => r.requesterCoreUserId === user?.id);
   const incoming = q.data.filter((r) => r.requesterCoreUserId !== user?.id);
-  const tabs: [Side, string, BorrowRequest[]][] = [["requester", "คำขอของฉัน", mine], ["owner", "คำขอที่เข้ามา", incoming]];
-  const rows = tabs.find((t) => t[0] === side)![2];
+  // แท็บแจ้งเตือนนับ "ที่ยังไม่อ่าน" ไม่ใช่ทั้งหมด เพราะที่อ่านแล้วไม่ต้องทำอะไรต่อ
+  const tabs: [Tab, string, number][] = [
+    ["requester", "คำขอของฉัน", mine.length],
+    ["owner", "คำขอที่เข้ามา", incoming.length],
+    ["notifications", "การแจ้งเตือน", unread],
+  ];
+  const side: Side = tab === "owner" ? "owner" : "requester";
+  const rows = tab === "owner" ? incoming : mine;
   return (
     <>
-      <header className="space-y-2"><h1 className="font-display text-headline-md md:text-headline-lg">คำขอ</h1></header>
-      <div role="tablist" aria-label="ประเภทคำขอ" className="flex gap-2 border-b border-outline-variant/40">
-        {tabs.map(([k, t, list]) => (
-          <button key={k} type="button" role="tab" id={`tab-${k}`} aria-selected={side === k} aria-controls="req-panel" onClick={() => setSide(k)}
-            className={`min-h-11 px-4 text-label-md ${side === k ? "border-b-2 border-primary-container text-primary-container" : "text-on-surface-variant"}`}>{t} ({list.length})</button>
+      <header className="space-y-2"><h1 className="font-display text-headline-md md:text-headline-lg">คำขอและแจ้งเตือน</h1></header>
+      <div role="tablist" aria-label="คำขอและการแจ้งเตือน" className="flex gap-2 border-b border-outline-variant/40">
+        {tabs.map(([k, t, n]) => (
+          <button key={k} type="button" role="tab" id={`tab-${k}`} aria-selected={tab === k} aria-controls="req-panel" onClick={() => setTab(k)}
+            className={`min-h-11 px-4 text-label-md ${tab === k ? "border-b-2 border-primary-container text-primary-container" : "text-on-surface-variant"}`}>{t} ({n})</button>
         ))}
       </div>
-      <div role="tabpanel" id="req-panel" aria-labelledby={`tab-${side}`} className="space-y-4">
-        {rows.length === 0 ? (
+      <div role="tabpanel" id="req-panel" aria-labelledby={`tab-${tab}`} className="space-y-4">
+        {tab === "notifications" ? <NotificationList showHeader={false} /> : rows.length === 0 ? (
           <EmptyState title={side === "owner" ? "ยังไม่มีคำขอเข้ามา" : "คุณยังไม่ได้ส่งคำขอ"} hint={side === "owner" ? undefined : "เลือกของที่สนใจจาก CampusShare แล้วกดขอยืม"}>
             {side === "requester" && <Link href="/" className={secondaryButtonClass}>ไปที่ CampusShare</Link>}
           </EmptyState>

@@ -18,7 +18,7 @@ export class AuthService {
 
   /** origin ที่เบราว์เซอร์เห็นจริง — ใช้ตรวจ next และเป็นปลายทางของ redirect หลัง callback */
   get publicOrigin(): string {
-    return this.config.get<string>('app.publicOrigin', 'http://localhost:3003');
+    return this.config.get<string>('app.publicOrigin', 'http://localhost:3205');
   }
 
   get stateCookieName(): string {

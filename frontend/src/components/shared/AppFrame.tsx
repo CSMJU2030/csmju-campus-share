@@ -57,9 +57,13 @@ function Frame({ children, coreHubUrl }: { children: React.ReactNode; coreHubUrl
   const nav: NavItem[] = [
     { label: "CampusShare", href: "/", icon: "dashboard" },
     { label: "ของของฉัน", href: "/my-listings", icon: "menu-book" },
-    { label: "คำขอ", href: "/borrow-requests", icon: "receipt" },
-    // ปุ่มกระดิ่งของกลางยังไม่มี badge และยังไม่มีปลายทาง → ใส่จำนวนที่ยังไม่อ่านไว้ใน label ของเมนูแทน
-    { label: unread > 0 ? `การแจ้งเตือน (${unread > 99 ? "99+" : unread})` : "การแจ้งเตือน", href: "/notifications", icon: "campaign" },
+    // คำขอกับการแจ้งเตือนรวมเป็นหน้าเดียว 3 แท็บ — การแจ้งเตือนเป็นทางลัดไปหาคำขออยู่แล้ว
+    // ปุ่มกระดิ่งของกลางยังไม่มี badge และยังไม่มีปลายทาง → ใส่จำนวนที่ยังไม่อ่านไว้ใน label แทน
+    {
+      label: unread > 0 ? `คำขอและแจ้งเตือน (${unread > 99 ? "99+" : unread})` : "คำขอและแจ้งเตือน",
+      href: "/borrow-requests",
+      icon: "receipt",
+    },
   ];
   if (can("admin:access")) nav.push({ label: "ผู้ดูแล", href: "/admin", icon: "settings" });
 

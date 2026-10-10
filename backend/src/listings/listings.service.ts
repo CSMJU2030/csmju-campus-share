@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingDto } from './dto/create-listing.dto';
-import { UpdateListingStatusDto } from './dto/update-listing-status.dto';
+import { UpdateListingDto } from './dto/update-listing.dto';
 import { QueryListingsDto } from './dto/query-listings.dto';
 import { conflict, forbidden, notFound, validationError } from '../common/exceptions/app.exception';
 import { CoreHubIdentity } from '../auth/core-hub-identity';
@@ -74,7 +74,11 @@ export class ListingsService {
     return { data: listing };
   }
 
-  async updateStatus(id: string, dto: UpdateListingStatusDto, user: CoreHubIdentity) {
+  /**
+   * PATCH /v1/listings/:id — partial update (api-conventions.md ข้อ 4)
+   * เจ้าของแก้ชื่อ/รายละเอียด/หมวดหมู่ และสลับเปิด-ปิดได้ในคำขอเดียวกัน
+   */
+  async update(id: string, dto: UpdateListingDto, user: CoreHubIdentity) {
     const listing = await this.prisma.listing.findUnique({ where: { id } });
     if (!listing || listing.departmentCode !== this.departmentCode) {
       throw notFound('ไม่พบรายการของนี้');
@@ -83,22 +87,41 @@ export class ListingsService {
       throw forbidden('เฉพาะเจ้าของรายการเท่านั้นที่แก้ไขได้');
     }
 
+    const editsContent =
+      dto.title !== undefined || dto.description !== undefined || dto.category !== undefined;
+    if (!editsContent && dto.status === undefined) {
+      throw validationError('ไม่ได้ระบุสิ่งที่ต้องการแก้', [
+        'at least one of: title, description, category, status',
+      ]);
+    }
+
     // เจ้าของสลับได้แค่ AVAILABLE <-> UNAVAILABLE
-    if (!OWNER_TOGGLEABLE.includes(dto.status as (typeof OWNER_TOGGLEABLE)[number])) {
+    if (
+      dto.status !== undefined &&
+      !OWNER_TOGGLEABLE.includes(dto.status as (typeof OWNER_TOGGLEABLE)[number])
+    ) {
       throw validationError(
         `เจ้าของตั้งสถานะได้แค่ ${OWNER_TOGGLEABLE.join(', ')} เท่านั้น สถานะอื่นระบบจัดการให้อัตโนมัติ`,
         [`status must be one of: ${OWNER_TOGGLEABLE.join(', ')}`],
       );
     }
 
-    // ...และสลับได้ก็ต่อเมื่อ "ตอนนี้" อยู่ในสองสถานะนั้นด้วย
-    // กันเคสปลดล็อกของที่กำลังถูกยืม/มีคำขอค้าง หรือของที่ให้ต่อไปแล้ว
+    // ...และแก้อะไรก็ได้ก็ต่อเมื่อ "ตอนนี้" อยู่ในสองสถานะนั้นด้วย
+    // กันเคสปลดล็อก/แก้ชื่อของที่กำลังถูกยืม มีคำขอค้าง หรือให้ต่อไปแล้ว
+    // (คนยืมต้องเห็นชื่อเดิมตลอดช่วงที่ถือของอยู่)
     const updated = await this.prisma.listing.updateMany({
       where: { id, status: { in: [...OWNER_TOGGLEABLE] } },
-      data: { status: dto.status, lastActivityAt: new Date() },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        // ส่งค่าว่างมา = ลบคำอธิบายออก (คอลัมน์เป็น nullable)
+        ...(dto.description !== undefined && { description: dto.description || null }),
+        ...(dto.category !== undefined && { category: dto.category }),
+        ...(dto.status !== undefined && { status: dto.status }),
+        lastActivityAt: new Date(),
+      },
     });
     if (updated.count === 0) {
-      throw conflict('สถานะปัจจุบันของรายการนี้เปลี่ยนเองไม่ได้ ระบบจัดการให้ตามคำขอยืม', [
+      throw conflict('สถานะปัจจุบันของรายการนี้แก้เองไม่ได้ ระบบจัดการให้ตามคำขอยืม', [
         `currentStatus=${listing.status}`,
       ]);
     }
