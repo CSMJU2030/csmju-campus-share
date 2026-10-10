@@ -9,25 +9,34 @@ import { CATEGORY_LABEL, LISTING_TYPE_LABEL } from "@/lib/labels";
 import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
 import type { ListingType } from "@/types";
 
-type Field = "title" | "description" | "category";
+type Field = "title" | "description" | "category" | "listingType";
+type TextField = Exclude<Field, "listingType">;
+// listingType ต้องมีชนิดเป็น ListingType ไม่ใช่ string — ไม่งั้น typecheck จับค่าเพี้ยนไม่ได้
+type FormState = { title: string; description: string; category: string; listingType: ListingType };
 const cats = Object.entries(CATEGORY_LABEL);
+const types = Object.entries(LISTING_TYPE_LABEL);
+const isListingType = (x: string): x is ListingType => Object.prototype.hasOwnProperty.call(LISTING_TYPE_LABEL, x);
 
-// backend ไม่มี endpoint แก้ไข/ลบ listing → ฟอร์มนี้มีเฉพาะ "ลงของใหม่"
+// ฟอร์มนี้มีเฉพาะ "ลงของใหม่" — การแก้ไขอยู่ในหน้ารายละเอียด (PATCH /listings/:id)
+// ห้ามใส่ค่าเริ่มต้นเป็นตัวพิมพ์เล็ก: React เลือก <option> แรกให้เองโดยไม่ยิง onChange
+// (react-dom updateOptions) หน้าจอจะดูถูกแต่ค่าที่ส่งผิด -> backend ตอบ 400
 type ListingFormProps = { embedded?: boolean; onCancel?: () => void };
 
 export function ListingForm({ embedded = false, onCancel }: ListingFormProps) {
   const router = useRouter();
-  const [v, setV] = useState({ title: "", description: "", category: "", listingType: "borrow" as ListingType });
+  const [v, setV] = useState<FormState>({ title: "", description: "", category: "", listingType: "BORROW" });
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [formErr, setFormErr] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const on = (k: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV((p) => ({ ...p, [k]: e.target.value }));
+  const on = (k: TextField) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setV((p) => ({ ...p, [k]: e.target.value }));
+  const onType = (e: React.ChangeEvent<HTMLSelectElement>) => setV((p) => ({ ...p, listingType: isListingType(e.target.value) ? e.target.value : p.listingType }));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const er: Partial<Record<Field, string>> = {};
     if (!v.title.trim()) er.title = "กรุณาระบุชื่อสิ่งของ";
     if (!v.category) er.category = "กรุณาเลือกหมวดหมู่";
+    if (!isListingType(v.listingType)) er.listingType = "กรุณาเลือกประเภท";
     setErrors(er);
     if (Object.keys(er).length) { setTimeout(() => document.querySelector<HTMLElement>("[aria-invalid=true]")?.focus(), 0); return; }
     setBusy(true); setFormErr([]);
@@ -54,8 +63,8 @@ export function ListingForm({ embedded = false, onCancel }: ListingFormProps) {
           <select {...bad("category")} value={v.category} onChange={on("category")}><option value="">เลือกหมวดหมู่</option>{cats.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
         </FormField>
       )}
-      <FormField label="ประเภท" required>
-        <select className={inputClass} value={v.listingType} onChange={on("listingType")}>{Object.entries(LISTING_TYPE_LABEL).map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
+      <FormField label="ประเภท" required error={errors.listingType}>
+        <select {...bad("listingType")} value={v.listingType} onChange={onType}>{types.map(([k, t]) => <option key={k} value={k}>{t}</option>)}</select>
       </FormField>
       {formErr.length > 0 && <ul role="alert" className="list-inside list-disc rounded-lg bg-error-container px-4 py-3 text-label-sm text-on-error-container">{formErr.map((m) => <li key={m}>{m}</li>)}</ul>}
       <div className="flex justify-end gap-3 pt-2">
