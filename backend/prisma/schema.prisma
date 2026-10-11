@@ -18,13 +18,14 @@ datasource db {
 enum ListingType {
   BORROW // ให้ยืม — มีวงจรคืน
   GIVEAWAY // ให้ต่อ — จบที่การส่งมอบ ไม่มีการคืน
+  WANTED // ตามหา — กลับทิศ: เจ้าของประกาศคือคนที่อยากได้ คนกดคือคนที่มีของมาเสนอ · จบที่การส่งมอบ ไม่มีการคืน
 }
 
 enum ListingStatus {
   AVAILABLE
   PENDING
   BORROWED
-  GIVEN_AWAY // สถานะสิ้นสุดของ GIVEAWAY ที่ส่งมอบแล้ว — เข้าแล้วไม่กลับมา AVAILABLE อีก
+  GIVEN_AWAY // สถานะสิ้นสุดของ GIVEAWAY และ WANTED ที่ส่งมอบแล้ว — เข้าแล้วไม่กลับมา AVAILABLE อีก
   UNAVAILABLE
   ARCHIVED // auto-archive เมื่อไม่มีการอัปเดตนาน (ดูหลักการ fail-safe)
 }

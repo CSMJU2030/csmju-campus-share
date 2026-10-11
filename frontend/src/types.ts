@@ -4,7 +4,7 @@
 // TODO(C26): ต้องเลิกเขียน type เองแล้ว generate จาก openapi.json แทน (tech-stack.md ข้อ 3)
 
 export type SubsystemRole = "STUDENT" | "ALUMNI" | "LECTURER" | "STAFF" | "ADMIN";
-export type ListingType = "BORROW" | "GIVEAWAY";
+export type ListingType = "BORROW" | "GIVEAWAY" | "WANTED";
 export type ListingStatus = "AVAILABLE" | "PENDING" | "BORROWED" | "GIVEN_AWAY" | "UNAVAILABLE" | "ARCHIVED";
 export type ListingCategory = string; // ค่าจริงอยู่ใน lib/labels.ts (CATEGORY_LABEL)
 export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "RETURNED" | "EXPIRED" | "OVERDUE";

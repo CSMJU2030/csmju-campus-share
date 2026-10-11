@@ -5882,7 +5882,8 @@
         "type": "string",
         "enum": [
           "BORROW",
-          "GIVEAWAY"
+          "GIVEAWAY",
+          "WANTED"
         ]
       },
       "ListingStatus": {

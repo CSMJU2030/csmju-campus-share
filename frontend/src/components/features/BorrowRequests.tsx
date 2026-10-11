@@ -8,7 +8,7 @@ import { useMe, useNotifications } from "@/components/shared/Providers";
 import { EmptyState, ErrorState, LoadingState, errorText } from "@/components/shared/States";
 import { NotificationList } from "@/components/features/NotificationList";
 import { api, endOfDayIso, toApiError } from "@/lib/api";
-import { formatDate } from "@/lib/labels";
+import { TYPE_COPY, formatDate } from "@/lib/labels";
 import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
 import { useAsync } from "@/hooks/useAsync";
 import type { BorrowRequest } from "@/types";
@@ -27,9 +27,11 @@ export function RequestCard({ r, side, actions = true, onChanged }: { r: BorrowR
   const [err, setErr] = useState("");
   const canRespond = actions && can("borrow-request:update:own");
 
-  // BORROW ต้องมีวันนัดคืนตอนอนุมัติ · GIVEAWAY ห้ามมี (backend ตอบ 400 ถ้าผิด)
-  const isGiveaway = r.listing?.listingType === "GIVEAWAY";
-  const needsDueDate = !isGiveaway;
+  // BORROW เท่านั้นที่มีวงจรคืน — ประเภทอื่นห้ามส่ง dueDate และแจ้งคืนไม่ได้ (backend ตอบ 400/409 ถ้าผิด)
+  // บางมุมมองไม่ได้แนบ listing มาด้วย → ถือเป็น BORROW เหมือนพฤติกรรมเดิม
+  const type = r.listing?.listingType ?? "BORROW";
+  const copy = TYPE_COPY[type];
+  const withReturn = type === "BORROW";
 
   async function send(status: "APPROVED" | "REJECTED" | "RETURNED") {
     setBusy(true); setErr("");
@@ -37,7 +39,7 @@ export function RequestCard({ r, side, actions = true, onChanged }: { r: BorrowR
       await api.respondBorrowRequest(r.id, {
         status,
         responseMessage: resp,
-        dueDate: status === "APPROVED" && needsDueDate && due ? endOfDayIso(due) : undefined,
+        dueDate: status === "APPROVED" && withReturn && due ? endOfDayIso(due) : undefined,
       });
       setResp(""); setDue("");
     } catch (e) { setErr(errorText(toApiError(e))); } // CONFLICT: สถานะอาจเปลี่ยนไปแล้ว → refetch ด้านล่าง
@@ -63,22 +65,22 @@ export function RequestCard({ r, side, actions = true, onChanged }: { r: BorrowR
       {canRespond && side === "owner" && r.status === "PENDING" && (
         <div className="max-w-prose space-y-3 border-t border-outline-variant/40 pt-3">
           <FormField label="ข้อความตอบกลับ"><textarea rows={2} maxLength={300} className={inputClass} value={resp} onChange={(e) => setResp(e.target.value)} /></FormField>
-          {needsDueDate ? (
+          {withReturn ? (
             <FormField label="วันนัดคืน" required error={!due ? "ต้องระบุวันนัดคืนก่อนอนุมัติ" : undefined}>
               <input type="date" min={today()} required aria-invalid={!due} className={inputClass} value={due} onChange={(e) => setDue(e.target.value)} />
             </FormField>
           ) : (
-            <p className="text-label-sm text-on-surface-variant">รายการให้ต่อไม่มีวันนัดคืน — อนุมัติแล้วถือว่าส่งมอบและปิดรายการถาวร</p>
+            <p className="text-label-sm text-on-surface-variant">{copy.noDueDateNote}</p>
           )}
           <div className="flex justify-end gap-3">
             <button type="button" className={secondaryButtonClass} disabled={busy} onClick={() => send("REJECTED")}>ปฏิเสธ</button>
-            <button type="button" className={primaryButtonClass} disabled={busy || (needsDueDate && !due)} aria-busy={busy} onClick={() => send("APPROVED")}>
-              {isGiveaway ? "อนุมัติและส่งมอบ" : "อนุมัติ"}
+            <button type="button" className={primaryButtonClass} disabled={busy || (withReturn && !due)} aria-busy={busy} onClick={() => send("APPROVED")}>
+              {copy.approve}
             </button>
           </div>
         </div>
       )}
-      {canRespond && !isGiveaway && (r.status === "APPROVED" || r.status === "OVERDUE") && (
+      {canRespond && withReturn && (r.status === "APPROVED" || r.status === "OVERDUE") && (
         <div className="flex justify-end border-t border-outline-variant/40 pt-3">
           <button type="button" className={primaryButtonClass} disabled={busy} aria-busy={busy} onClick={() => send("RETURNED")}>ยืนยันว่าคืนแล้ว</button>
         </div>
