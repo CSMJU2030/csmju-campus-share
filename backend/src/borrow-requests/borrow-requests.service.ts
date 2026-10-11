@@ -11,6 +11,19 @@ import { PaginationQueryDto, pageArgs, pageMeta } from '../common/dto/pagination
 // นโยบาย fail-safe — ระบบต้องอยู่รอดได้แม้ไม่มี Admin เฝ้า
 const PENDING_EXPIRE_DAYS = 3;
 
+/**
+ * BORROW เท่านั้นที่มีวงจรคืน — GIVEAWAY และ WANTED จบที่การส่งมอบ
+ * ใช้คำถามนี้แทนการเช็ก `=== 'GIVEAWAY'` เพื่อให้เพิ่มประเภทใหม่แล้วไม่ต้องไล่แก้ทุกจุด
+ */
+const hasReturnCycle = (listingType: string) => listingType === 'BORROW';
+
+/** WANTED กลับทิศ — เจ้าของประกาศคือคนที่อยากได้ คนกดคือคนที่มีของมาเสนอ */
+const newRequestTitle = (listingType: string, title: string) => {
+  if (listingType === 'WANTED') return `มีคนเสนอของให้ "${title}"`;
+  if (listingType === 'GIVEAWAY') return `มีคนขอรับ "${title}"`;
+  return `มีคนขอยืม "${title}"`;
+};
+
 /** แถวที่ได้จาก UPDATE ... RETURNING ของงานตั้งเวลา */
 interface AffectedRequestRow {
   id: string;
@@ -65,9 +78,7 @@ export class BorrowRequestsService {
     await this.notifications.create({
       recipientCoreUserId: listing.ownerCoreUserId,
       type: 'NEW_REQUEST',
-      title: listing.listingType === 'GIVEAWAY'
-        ? `มีคนขอรับ "${listing.title}"`
-        : `มีคนขอยืม "${listing.title}"`,
+      title: newRequestTitle(listing.listingType, listing.title),
       body: dto.message,
       refListingId: listing.id,
       refRequestId: request.id,
@@ -129,21 +140,22 @@ export class BorrowRequestsService {
     }
 
     const isApproved = dto.status === 'APPROVED';
-    const isGiveaway = request.listing.listingType === 'GIVEAWAY';
+    const withReturn = hasReturnCycle(request.listing.listingType);
 
-    if (isApproved && isGiveaway && dto.dueDate) {
-      throw validationError('รายการให้ต่อไม่มีกำหนดคืน', [
-        'dueDate must not be set when approving a GIVEAWAY listing',
+    if (isApproved && !withReturn && dto.dueDate) {
+      throw validationError('รายการประเภทนี้ไม่มีกำหนดคืน', [
+        `dueDate must not be set when approving a ${request.listing.listingType} listing`,
       ]);
     }
-    if (isApproved && !isGiveaway && !dto.dueDate) {
+    if (isApproved && withReturn && !dto.dueDate) {
       throw validationError('ต้องระบุวันกำหนดคืนตอนอนุมัติ', [
         'dueDate is required when approving a BORROW listing',
       ]);
     }
 
-    // GIVEAWAY ที่อนุมัติ = ส่งมอบแล้ว -> GIVEN_AWAY เป็นสถานะสิ้นสุด ไม่กลับมา AVAILABLE อีก
-    const nextListingStatus = !isApproved ? 'AVAILABLE' : isGiveaway ? 'GIVEN_AWAY' : 'BORROWED';
+    // ไม่มีวงจรคืน (GIVEAWAY/WANTED) ที่อนุมัติ = ส่งมอบแล้ว -> GIVEN_AWAY เป็นสถานะสิ้นสุด
+    // ไม่กลับมา AVAILABLE อีก
+    const nextListingStatus = !isApproved ? 'AVAILABLE' : withReturn ? 'BORROWED' : 'GIVEN_AWAY';
 
     const updatedRequest = await this.prisma.$transaction(async (tx) => {
       // เงื่อนไข status: 'PENDING' อยู่ใน WHERE — สองคนกดอนุมัติพร้อมกันจะผ่านคนเดียว
@@ -186,9 +198,11 @@ export class BorrowRequestsService {
     request: { id: string; status: string; requesterCoreUserId: string; listing: { id: string; title: string; ownerCoreUserId: string; listingType: string } },
     user: CoreHubIdentity,
   ) {
-    // GIVEAWAY ไม่มีวงจรคืน — จบที่การส่งมอบตามขอบเขตที่ตัดสินไว้
-    if (request.listing.listingType === 'GIVEAWAY') {
-      throw conflict('รายการให้ต่อไม่มีการคืน จบที่การส่งมอบแล้ว', ['listingType=GIVEAWAY']);
+    // GIVEAWAY และ WANTED ไม่มีวงจรคืน — จบที่การส่งมอบตามขอบเขตที่ตัดสินไว้
+    if (!hasReturnCycle(request.listing.listingType)) {
+      throw conflict('รายการประเภทนี้ไม่มีการคืน จบที่การส่งมอบแล้ว', [
+        `listingType=${request.listing.listingType}`,
+      ]);
     }
 
     const coreUserId = user.coreUserId;

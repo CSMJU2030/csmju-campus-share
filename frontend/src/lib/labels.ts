@@ -11,7 +11,48 @@ export const ROLE_LABEL: Record<SubsystemRole, string> = {
   STUDENT: "นักศึกษา", ALUMNI: "ศิษย์เก่า", LECTURER: "อาจารย์", STAFF: "บุคลากร", ADMIN: "ผู้ดูแลระบบ",
 };
 
-export const LISTING_TYPE_LABEL: Record<ListingType, string> = { BORROW: "ให้ยืม", GIVEAWAY: "ให้ต่อ" };
+export const LISTING_TYPE_LABEL: Record<ListingType, string> = { BORROW: "ให้ยืม", GIVEAWAY: "ให้ต่อ", WANTED: "ตามหา" };
+
+/**
+ * คำเรียกที่ต่างกันตามประเภทประกาศ — เก็บรวมที่เดียวแทนการกระจาย ternary ตามคอมโพเนนต์
+ * WANTED กลับทิศจากอีกสองประเภท: เจ้าของประกาศคือคนที่อยากได้ คนกดคือคนที่มีของมาเสนอ
+ * กลไกเบื้องหลังเหมือน GIVEAWAY ทุกอย่าง (ไม่มีวันนัดคืน ไม่มีวงจรคืน อนุมัติแล้วปิดถาวร)
+ * ต่างกันแค่ถ้อยคำ — ดู backend/src/borrow-requests/borrow-requests.service.ts (hasReturnCycle)
+ */
+export const TYPE_COPY: Record<ListingType, {
+  /** ปุ่มของคนที่ไม่ใช่เจ้าของ ในหน้ารายละเอียด */
+  cta: string;
+  /** คำอธิบายใต้ปุ่มนั้น — ว่าง = ไม่ต้องแสดง */
+  ctaHint: string;
+  /** ปุ่มตอบรับของเจ้าของ ในหน้าคำขอ */
+  approve: string;
+  /** ข้อความแทนช่องวันนัดคืน — ว่าง = ประเภทนี้ต้องระบุวันนัดคืน */
+  noDueDateNote: string;
+  /** ข้อความเมื่อรายการปิดถาวรแล้ว (สถานะ GIVEN_AWAY) */
+  closedNote: string;
+}> = {
+  BORROW: {
+    cta: "ขอยืม",
+    ctaHint: "",
+    approve: "อนุมัติ",
+    noDueDateNote: "",
+    closedNote: "ของชิ้นนี้ถูกส่งมอบให้ผู้อื่นไปแล้ว",
+  },
+  GIVEAWAY: {
+    cta: "ขอรับ",
+    ctaHint: "ของชิ้นนี้เป็นการ \u201cให้ต่อ\u201d เมื่อเจ้าของอนุมัติจะถือว่าส่งมอบแล้วและปิดรายการถาวร ไม่มีการคืน",
+    approve: "อนุมัติและส่งมอบ",
+    noDueDateNote: "รายการให้ต่อไม่มีวันนัดคืน — อนุมัติแล้วถือว่าส่งมอบและปิดรายการถาวร",
+    closedNote: "ของชิ้นนี้ถูกส่งมอบให้ผู้อื่นไปแล้ว",
+  },
+  WANTED: {
+    cta: "ฉันมีของชิ้นนี้",
+    ctaHint: "ประกาศนี้เป็นการ \u201cตามหา\u201d — กดเพื่อเสนอของให้ผู้ประกาศ เมื่อเขารับข้อเสนอจะปิดประกาศถาวร ไม่มีการคืนผ่านระบบ",
+    approve: "รับข้อเสนอ",
+    noDueDateNote: "ประกาศตามหาไม่มีวันนัดคืน — รับข้อเสนอแล้วจะปิดประกาศถาวร",
+    closedNote: "ผู้ประกาศได้รับของแล้ว ประกาศนี้ปิดแล้ว",
+  },
+};
 export const LISTING_STATUS_LABEL: Record<ListingStatus, string> = {
   AVAILABLE: "ว่าง", PENDING: "รอเจ้าของตอบ", BORROWED: "ถูกยืมอยู่",
   GIVEN_AWAY: "ส่งมอบแล้ว", UNAVAILABLE: "ปิดชั่วคราว", ARCHIVED: "เก็บถาวร",

@@ -5,7 +5,7 @@ import { FormField } from "@/components/shared/FormField";
 import { useMe } from "@/components/shared/Providers";
 import { ErrorState, LoadingState, errorText } from "@/components/shared/States";
 import { api, toApiError } from "@/lib/api";
-import { CATEGORY_LABEL, LISTING_STATUS_LABEL, LISTING_TYPE_LABEL, formatDate, label } from "@/lib/labels";
+import { CATEGORY_LABEL, LISTING_STATUS_LABEL, LISTING_TYPE_LABEL, TYPE_COPY, formatDate, label } from "@/lib/labels";
 import { cardClass, inputClass, primaryButtonClass, secondaryButtonClass } from "@/lib/ui";
 import { useAsync } from "@/hooks/useAsync";
 
@@ -32,7 +32,8 @@ export function ListingDetail({ id }: { id: string }) {
   const canReport = !isOwner && can("report:create");
   // สถานะอื่น (PENDING/BORROWED/GIVEN_AWAY/ARCHIVED) ระบบเปลี่ยนให้เอง เจ้าของสลับไม่ได้
   const toggleTo = x.status === "AVAILABLE" ? "UNAVAILABLE" : x.status === "UNAVAILABLE" ? "AVAILABLE" : null;
-  const isGiveaway = x.listingType === "GIVEAWAY";
+  // คำเรียกทั้งหมดของประเภทนี้อยู่ที่ lib/labels.ts ที่เดียว — เพิ่มประเภทใหม่ไม่ต้องแก้ไฟล์นี้
+  const copy = TYPE_COPY[x.listingType];
 
   async function run(fn: () => Promise<unknown>, ok: string, done?: () => void) {
     setBusy(true); setErr(""); setNote("");
@@ -110,15 +111,15 @@ export function ListingDetail({ id }: { id: string }) {
           <div className="flex justify-end">
             <button type="button" className={primaryButtonClass} disabled={busy} aria-busy={busy}
               onClick={() => run(() => api.createBorrowRequest(id, msg), "ส่งคำขอแล้ว เจ้าของจะเห็นคำขอของคุณ", () => setMsg(""))}>
-              {isGiveaway ? "ขอรับ" : "ขอยืม"}
+              {copy.cta}
             </button>
           </div>
-          {isGiveaway && <p className="text-label-sm text-on-surface-variant">ของชิ้นนี้เป็นการ &quot;ให้ต่อ&quot; เมื่อเจ้าของอนุมัติจะถือว่าส่งมอบแล้วและปิดรายการถาวร ไม่มีการคืน</p>}
+          {copy.ctaHint && <p className="text-label-sm text-on-surface-variant">{copy.ctaHint}</p>}
         </div>
       ) : !isOwner && x.status !== "AVAILABLE" ? (
         <p className="text-body-md text-on-surface-variant">
           {x.status === "GIVEN_AWAY"
-            ? "ของชิ้นนี้ถูกส่งมอบให้ผู้อื่นไปแล้ว"
+            ? copy.closedNote
             : `ตอนนี้ยังขอไม่ได้ (สถานะ: ${label(LISTING_STATUS_LABEL, x.status)})`}
         </p>
       ) : null}
